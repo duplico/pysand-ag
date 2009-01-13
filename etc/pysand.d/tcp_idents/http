@@ -1,0 +1,26 @@
+; pysand format identifier for HTTP/1.1
+; This currently only detects GETs. Therefore, it needs a bit of work.
+
+[identifier]
+protocol = "HTTP"
+threshold = 4
+
+[client0]
+start	= "GET "
+sig	= "document"
+finish	= "HTTP/"
+
+[client1]
+start	= "User-Agent: "
+sig	= "c_version"
+finish	= "\r\n"
+
+[server0]
+start	= "HTTP/"
+sig	= "null"
+finish	= ""
+
+[server1]
+start	= "Server: "
+sig	= "s_version"
+finish	= "\r\n"

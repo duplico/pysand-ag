@@ -1,0 +1,18 @@
+;Pysand format identifier for Gnutella
+;George Louthan, 10-30-08
+;Enterprise Security Group
+;University of Tulsa
+
+[identifier]
+protocol = "GNUTELLA"
+threshold = 2
+
+[client0]
+start	= "GNUTELLA CONNECT/"
+sig	= "null"
+finish	= ""
+
+[server0]
+start	= "GNUTELLA"
+sig	= "null"
+finish	= "OK"

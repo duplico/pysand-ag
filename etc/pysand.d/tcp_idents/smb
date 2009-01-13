@@ -1,0 +1,28 @@
+;Pysand format identifier for SMB
+;George Louthan, 10-30-08
+;Enterprise Security Group
+;University of Tulsa
+
+[identifier]
+protocol = "SMB"
+threshold = 4
+
+[server0]
+start	= \xffSMBr
+sig	= "null"
+finish	= ""
+
+[client0]
+start	= "\xffSMBr"
+sig	= "null"
+finish	= ""
+
+[server1]
+start	= "\xffSMBs"
+sig	= "null"
+finish	= ""
+
+[client1]
+start	= "\xffSMBs"
+sig	= "null"
+finish	= ""

@@ -1,0 +1,23 @@
+[identifier]
+protocol = "SMB"
+threshold = 4
+
+[server0]
+start	= "\xffSMB\x72"
+sig	= "null"
+finish	= ""
+
+[client0]
+start	= "\xffSMB\x72"
+sig	= "null"
+finish	= ""
+
+[server1]
+start	= "\xffSMB\x73"
+sig	= "null"
+finish	= ""
+
+[client1]
+start	= "\xffSMB\x73"
+sig	= "null"
+finish	= ""
