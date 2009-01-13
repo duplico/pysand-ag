@@ -1,0 +1,15 @@
+; pysand format identifier for SSH
+
+[identifier]
+protocol = "SSH"
+threshold = 2
+
+[client0]
+start	= "SSH-"
+sig	= "c_ver"
+finish	= "\n"
+
+[server0]
+start	= "SSH-"
+sig	= "s_ver"
+finish	= "\n"

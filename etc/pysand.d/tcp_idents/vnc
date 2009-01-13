@@ -1,0 +1,18 @@
+;Pysand format identifier for VNC
+;George Louthan, 10-30-08
+;Enterprise Security Group
+;University of Tulsa
+
+[identifier]
+protocol = "VNC"
+threshold = 2
+
+[server0]
+start	= "RFB 003."
+sig	= "null"
+finish	= ""
+
+[client0]
+start	= "RFB 003."
+sig	= "null"
+finish	= ""

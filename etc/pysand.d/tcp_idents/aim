@@ -1,0 +1,18 @@
+;pysand format identifier for AOL Instant Messenger
+;George Louthan, 10-30-08
+;Enterprise Security Group
+;University of Tulsa
+
+[identifier]
+protocol = "AIM"
+threshold = 2
+
+[client0]
+start	= "AOL Instant Messenger, version"
+sig	= "null"
+finish	= ""
+
+[server0]
+start	= "*"
+sig	= "null"
+finish	= ""

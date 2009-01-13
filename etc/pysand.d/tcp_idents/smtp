@@ -1,0 +1,48 @@
+;Pysand format identifier for SMB
+;George Louthan, 10-30-08
+;Enterprise Security Group
+;University of Tulsa
+
+[identifier]
+protocol = "SMTP"
+threshold = 8
+
+[client0]
+start	= "MAIL"
+sig	= "null"
+finish	= ""
+
+[server0]
+start	= "250"
+sig	= "null"
+finish	= ""
+
+[client1]
+start	= "RCPT"
+sig	= "null"
+finish	= ""
+
+[server1]
+start	= "250"
+sig	= "null"
+finish	= ""
+
+[client2]
+start	= "DATA"
+sig	= "null"
+finish	= ""
+
+[server2]
+start	= "354"
+sig	= "null"
+finish	= ""
+
+[client3]
+start	= "\n.\n"
+sig	= "null"
+finish	= ""
+
+[server3]
+start	= "250"
+sig	= "null"
+finish	= ""

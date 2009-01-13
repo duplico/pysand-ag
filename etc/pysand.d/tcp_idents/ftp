@@ -1,0 +1,35 @@
+;Pysand format identifier for FTP
+;George Louthan, 10-30-08
+;Enterprise Security Group
+;University of Tulsa
+
+;TODO: May not be as general as desired. Requires a login.
+
+[identifier]
+protocol = "FTP"
+threshold = 5
+
+[server0]
+start	= "220"
+sig	= "null"
+finish	= ""
+
+[client0]
+start	= "USER"
+sig	= "user"
+finish	= "\n"
+
+[server1]
+start	= "331"
+sig	= "null"
+finish	= ""
+
+[client1]
+start	= "PASS"
+sig	= "pass"
+finish	= "\n"
+
+[server2]
+start	= "230"
+sig	= "null"
+finish	= ""
