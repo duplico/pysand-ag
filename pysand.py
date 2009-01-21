@@ -5,7 +5,6 @@ import nids
 from ident_gen import *
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
-NOTROOT = "george"
 DEBUG=False
 
 
@@ -47,7 +46,7 @@ class certainty_node: # One per protocol per stream
 class sand:
     """The main pysand class. Instanciating more than one at a time
     is not recommended."""
-    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None):
+    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None, pcap_interface=None, notroot="root"):
         """Construct a new pysand object.
         Parameters:
         detect_callback_tcp: Callback function to be called when a new stream is detected.
@@ -71,6 +70,8 @@ class sand:
         nids.param("scan_num_hosts", 0)  # Disable portscan detection        
         if pcap_file is not None:
             nids.param("filename", pcap_file)
+        if pcap_interface is not None:
+            nids.param("device", pcap_interface)
         nids.param("pcap_filter", "tcp") # Only capture TCP traffic
         nids.init()
         nids.register_tcp(self.handleTcpStream) # Maybe put after the next line. We'll see.
@@ -81,15 +82,15 @@ class sand:
         self.f_cb_end_tcp = end_callback_tcp
         if DEBUG: print "Callbacks"
 
-        # Set up so as not to run as root any longer? You need to be root to
-        # invoke this, though. I don't think I like this malarkey. Real men run as root.
-        (uid, gid) = pwd.getpwnam(NOTROOT)[2:4]
-        os.setgroups([gid,])
-        os.setgid(gid)
-        os.setuid(uid)
-        if 0 in [os.getuid(), os.getgid()] + list(os.getgroups()):
-            print "error - drop root, please!"
-            sys.exit(1)
+        # Drop to run as a user
+        if notroot is not "root":
+            (uid, gid) = pwd.getpwnam(NOTROOT)[2:4]
+            os.setgroups([gid,])
+            os.setgid(gid)
+            os.setuid(uid)
+            if 0 in [os.getuid(), os.getgid()] + list(os.getgroups()):
+                print "error - supply better username, please!"
+                sys.exit(1)
         
         # Output our PID. Just in case we have to kill us.
         print "pid", os.getpid()
@@ -103,7 +104,7 @@ class sand:
         except Exception, e:
             print "misc. exception (runtime error in user callback?):", e
         
-        # When finished, print debugging information:
+        # When finished, print debugging information (maybe):
         if DEBUG:
             for index,strm in self.index_table.iteritems():
                     print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
@@ -202,17 +203,17 @@ def main():
 
 def newStream(tcp_stream):
     pass
-    #print "New stream opened: ", tcp_stream.addr
+    print "New stream opened: ", tcp_stream.addr
 
 def idStream(tcp_stream, proto_name):
     pass
-    #print "Identification made:", tcp_stream.addr, "is", proto_name
+    print "Identification made:", tcp_stream.addr, "is", proto_name
     #if(139 in tcp_stream.addr[1]):
     #    print str(tcp_stream.client.data)
 
 def endStream(tcp_stream):
     pass
-    #print "Stream closed: ", tcp_stream.addr
+    print "Stream closed: ", tcp_stream.addr
 
 if __name__ == '__main__':
     DEBUG=False
