@@ -7,7 +7,6 @@ from ident_gen import *
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
 DEBUG=False
 
-
 class certainty_node: # One per protocol per stream
     """A certainty node describes a single node in the certainty table;
     there should exist a single certainty node per protocol per stream.
@@ -26,7 +25,7 @@ class certainty_node: # One per protocol per stream
         c->client half-stream (default)
         s->server half-stream"""
         
-        # Enforce default behavior
+        # Enforce default behavior. I hope this never happens.
         if half_stream not in ('c','s'):
             half_stream='c'
             if DEBUG: print "Forcing client search. Fix your coding, stupid."
@@ -80,7 +79,7 @@ class sand:
         self.f_cb_new_tcp = detect_callback_tcp
         self.f_cb_id_tcp = id_callback_tcp
         self.f_cb_end_tcp = end_callback_tcp
-        if DEBUG: print "Callbacks"
+        if DEBUG: print "Callbacks registered"
 
         # Drop to run as a user
         if notroot is not "root":
@@ -89,11 +88,11 @@ class sand:
             os.setgid(gid)
             os.setuid(uid)
             if 0 in [os.getuid(), os.getgid()] + list(os.getgroups()):
-                print "error - supply better username, please!"
+                if DEBUG: print "Supply better username, please!"
                 sys.exit(1)
         
         # Output our PID. Just in case we have to kill us.
-        print "pid", os.getpid()
+        print "pid: [", os.getpid()
     
         # Loop forever (network device), or until EOF (pcap file)
         # Note that an exception in the callback will break the loop!
@@ -114,9 +113,10 @@ class sand:
         identifiers=[]
         for file in os.listdir(ident_dir): # For every file in ident_dir
             new_identifier = load_ident(os.path.join(ident_dir,file))
+            if DEBUG: print 'Loading identifier: ', load_ident(os.path.join(ident_dir,file))
             if new_identifier is not None:
                 identifiers+=[new_identifier]
-                print "Added",os.path.join(ident_dir,file)
+                #print "Added",os.path.join(ident_dir,file)
         return identifiers
 
     def handleTcpStream(self, tcp_stream):
@@ -130,7 +130,7 @@ class sand:
             
             # Store our own metadata -- twice.
             new_ct=self.certainty_table(self.all_idents)
-            self.index_table[self.next_index]=(tcp_stream,new_ct,stream_id,'unknown')
+            self.index_table[self.next_index]=(tcp_stream,new_ct,stream_id,'unknown') #TODO: These tuples should probably be the same.
             self.stream_table[stream_id]=(self.next_index,new_ct,tcp_stream,'unknown')
             self.next_index+=1
             
@@ -159,12 +159,12 @@ class sand:
             self.index_table[index]=(tcp_stream,ct,stream_id,id_ret)
             self.f_cb_id_tcp(self.stream_table[stream_id][2], id_ret)
         pass
-            
+        
     def searchStream(self,stream_id):
         tcp_stream=self.stream_table[stream_id][2]
         data = dict()
         data['c'] = tcp_stream.server.data # These needed to be switched.
-        data['s'] = tcp_stream.client.data # I don't think it's my failt.
+        data['s'] = tcp_stream.client.data # I don't think it's my fault.
         for cert_index in self.stream_table[stream_id][1]:
             cert_node=self.stream_table[stream_id][1][cert_index]
             for half_stream in ('s','c'):
