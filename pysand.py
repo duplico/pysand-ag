@@ -253,7 +253,6 @@ def usage():
     print 'sudo python pysand.py -s identdir {-i interface | -p pcapfile}'
 
 if __name__ == '__main__':
-    #DEBUG=True
     interface=None
     pcapfile=None
     identdir=None
@@ -277,12 +276,16 @@ if __name__ == '__main__':
             sys.exit()
         elif o in ("-i"):
             interface=a
-        #else:
-            #assert False, "unhandled option"
-    
-    if len(sys.argv) == 5: # read a pcap file?
-        pass
-    else:
+        else:
+            usage()
+    if pcapfile==None and interface==None:
         usage()
-        sys.exit()
+        exit()
+    if pcapfile!=None and interface!=None:
+        usage()
+        exit()
+    if identdir==None:
+        usage()
+        exit()
+        
     main(interface,pcapfile,identdir)
