@@ -10,7 +10,7 @@ threshold = 3
 ;sig	= "document"
 ;finish	= "HTTP/"
 
-[client1]
+[client0]
 start	= "User-Agent: "
 sig	= "c_version"
 finish	= "\r\n"
