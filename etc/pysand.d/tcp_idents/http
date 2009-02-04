@@ -3,12 +3,12 @@
 
 [identifier]
 protocol = "HTTP"
-threshold = 4
+threshold = 3
 
-[client0]
-start	= "GET "
-sig	= "document"
-finish	= "HTTP/"
+;[client0]
+;start	= "GET "
+;sig	= "document"
+;finish	= "HTTP/"
 
 [client1]
 start	= "User-Agent: "

@@ -5,7 +5,8 @@ import nids
 from ident_gen import *
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
-DEBUG=False
+
+DEBUG=True
 
 class certainty_node: # One per protocol per stream
     """A certainty node describes a single node in the certainty table;
@@ -28,7 +29,7 @@ class certainty_node: # One per protocol per stream
         # Enforce default behavior. I hope this never happens.
         if half_stream not in ('c','s'):
             half_stream='c'
-            if DEBUG: print "Forcing client search. Fix your coding, stupid."
+            if self.debug: print "Forcing client search. Fix your coding, stupid."
         
         # Select the proper set of signatures
         if half_stream=='c':
@@ -42,10 +43,13 @@ class certainty_node: # One per protocol per stream
         else:
             return sigs[self.next[half_stream]]
 
+def ignore(a):
+    pass
+
 class sand:
     """The main pysand class. Instanciating more than one at a time
     is not recommended."""
-    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None, pcap_interface=None, notroot="root"):
+    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None, pcap_interface=None, notroot="root", packet_count=-1, debug_mode=False):
         """Construct a new pysand object.
         Parameters:
         detect_callback_tcp: Callback function to be called when a new stream is detected.
@@ -53,6 +57,8 @@ class sand:
         end_callback_tcp: Callback function to be called when a stream is closed.
         identifier_dir: The directory containing our identifier specifications.
         pcap_file: Optional. The pcap file to use. If omitted, captures from the wire."""
+        
+        DEBUG=debug_mode
         
         if pcap_file == 'None':
             pcap_file=None
@@ -72,8 +78,10 @@ class sand:
         if pcap_interface is not None:
             nids.param("device", pcap_interface)
         nids.param("pcap_filter", "tcp") # Only capture TCP traffic
-        nids.init()
+        #nids.param("tcp_workarounds",1) I don't think this line was even supported by the Python wrapper anyway.
+        nids.init() #
         nids.register_tcp(self.handleTcpStream) # Maybe put after the next line. We'll see.
+        
         
         # SAND Callback functions init
         self.f_cb_new_tcp = detect_callback_tcp
@@ -85,7 +93,7 @@ class sand:
         if notroot is not "root":
             (uid, gid) = pwd.getpwnam(NOTROOT)[2:4]
             os.setgroups([gid,])
-            os.setgid(gid)
+            os.setgid(gid) #
             os.setuid(uid)
             if 0 in [os.getuid(), os.getgid()] + list(os.getgroups()):
                 if DEBUG: print "Supply better username, please!"
@@ -98,15 +106,20 @@ class sand:
         # Note that an exception in the callback will break the loop!
         try:
             nids.run()
+            i=1
+            while i>0: #Weird.
+                #i=nids.dispatch(1) #packet_count
+                i=nids.next()
         except nids.error, e:
             print "nids/pcap error:", e
         except Exception, e:
             print "misc. exception (runtime error in user callback?):", e
         
         # When finished, print debugging information (maybe):
-        if DEBUG:
-            for index,strm in self.index_table.iteritems():
-                    print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
+        #if DEBUG:
+            #for index,strm in self.index_table.iteritems():
+                    #print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
+        #exit()
 
     def load_idents(self, ident_dir):
         """Load into memory all of the protocol identifiers from ident_dir."""
@@ -121,9 +134,12 @@ class sand:
 
     def handleTcpStream(self, tcp_stream):
         """Callback function called by libnids when it receives a new packet."""
-        if DEBUG: print "*****tcps -", str(tcp_stream.addr), " state:", tcp_stream.nids_state, " - ", tcp_stream
+        #if DEBUG: print "*****tcps -", str(tcp_stream.addr), " state:", tcp_stream.nids_state, " - ", tcp_stream
+        print "Handling a TCP stream."
         stream_id=tcp_stream.addr
+        print stream_id
         if tcp_stream.nids_state == nids.NIDS_JUST_EST: # New connection/stream
+            print "New stream."
             #self.stream_list = self.stream_list+[tcp_stream]
             tcp_stream.client.collect=1 # Signal to collect this data
             tcp_stream.server.collect=1
@@ -132,18 +148,21 @@ class sand:
             new_ct=self.certainty_table(self.all_idents)
             self.index_table[self.next_index]=(tcp_stream,new_ct,stream_id,'unknown') #TODO: These tuples should probably be the same.
             self.stream_table[stream_id]=(self.next_index,new_ct,tcp_stream,'unknown')
+            #print "*******", tcp_stream.addr,"***",stream_id
             self.next_index+=1
+            
             
             self.identifyStream(stream_id)
             self.f_cb_new_tcp(tcp_stream) #Call back.
         elif tcp_stream.nids_state == nids.NIDS_DATA: # Established connection receiving new data
-            tcp_stream.discard(0) # Don't discard any of it. Keep following.
+            #tcp_stream.discard(0) # Don't discard any of it. Keep following.
             index=self.stream_table[stream_id][0]
             ct = self.index_table[index][1]
             proto=self.index_table[index][3]
-            if tcp_stream != self.index_table[index][0]:
-                self.index_table[index]=(tcp_stream,ct,stream_id,proto)
-                self.stream_table[stream_id]=(index,ct,tcp_stream,proto)
+            #if tcp_stream != self.index_table[index][0]:
+                #print "Problem: stream ", stream_id, "Doesn't match",self.index_table[index][2]
+                #self.index_table[index]=(tcp_stream,ct,stream_id,proto)
+                #self.stream_table[stream_id]=(index,ct,tcp_stream,proto)
             if proto is 'unknown':
                 self.identifyStream(stream_id)
         elif tcp_stream.nids_state in end_states: #TODO: This doesn't seem to work.
@@ -165,6 +184,7 @@ class sand:
         data = dict()
         data['c'] = tcp_stream.server.data # These needed to be switched.
         data['s'] = tcp_stream.client.data # I don't think it's my fault.
+        print "Length of ", stream_id, len(str(data['c'])), len(str(data['s']))
         for cert_index in self.stream_table[stream_id][1]:
             cert_node=self.stream_table[stream_id][1][cert_index]
             for half_stream in ('s','c'):
@@ -197,7 +217,7 @@ class sand:
         return ct
 
 def main():
-    libsand = sand(newStream,idStream,endStream,sys.argv[2],sys.argv[1])
+    libsand = sand(newStream,idStream,endStream,sys.argv[2],sys.argv[1], debug_mode=True)
     print "done"
     pass
 
@@ -208,8 +228,9 @@ def newStream(tcp_stream):
 def idStream(tcp_stream, proto_name):
     pass
     print "Identification made:", tcp_stream.addr, "is", proto_name
-    #if(139 in tcp_stream.addr[1]):
-    #    print str(tcp_stream.client.data)
+    if(139 in tcp_stream.addr[1]):
+        print "Wii have a problem", len(str(tcp_stream.client.data)) #.encode('hex')
+    tcp_stream=None
 
 def endStream(tcp_stream):
     pass
