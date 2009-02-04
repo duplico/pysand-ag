@@ -2,6 +2,7 @@
 
 import os, pwd, sys
 import nids
+import getopt
 from ident_gen import *
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
@@ -71,8 +72,8 @@ class sand:
         self.index_table=dict()
         
         ###
-        pcap_file=None
-        pcap_interface='eth0'
+        #pcap_file=None
+        #pcap_interface='eth0'
         ###
         
         
@@ -227,8 +228,8 @@ class sand:
             ct[i.proto_name]=certainty_node(i)
         return ct
 
-def main():
-    libsand = sand(newStream,idStream,endStream,sys.argv[2],sys.argv[1], debug_mode=False)
+def main(interface,pcapfile,identdir):
+    libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface, debug_mode=False)
     print "done"
     pass
 
@@ -248,11 +249,40 @@ def endStream(tcp_stream):
     pass
     print "Stream closed: ", tcp_stream.addr
 
+def usage():
+    print 'sudo python pysand.py -s identdir {-i interface | -p pcapfile}'
+
 if __name__ == '__main__':
     #DEBUG=True
-    if len(sys.argv) == 3: # read a pcap file?
+    interface=None
+    pcapfile=None
+    identdir=None
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hp:i:s:")
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
+    output = None
+    verbose = False
+    for o, a in opts:
+        print o
+        if o == "-p":
+            pcapfile=a
+        if o == "-s":
+            identdir=a
+        elif o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif o in ("-i"):
+            interface=a
+        #else:
+            #assert False, "unhandled option"
+    
+    if len(sys.argv) == 5: # read a pcap file?
         pass
     else:
-        print "Oops, wrong input! Put: sudo python pysand.py pcapfile identdir"
+        usage()
         sys.exit()
-    main()
+    main(interface,pcapfile,identdir)
