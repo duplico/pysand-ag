@@ -24,18 +24,14 @@ def load_ident(filename):
     client_working=True
     for i in range(len(all_sections)):
         if client_working and "client"+str(i) in all_sections:
-            #print i,"c"
             pass
         elif client_working:
             num_client=i
-            #print num_client,"clients"
             client_working=False
         if server_working and "server"+str(i) in all_sections:
-            #print i,"s"
             pass
         elif server_working:
             num_server=i
-            #print num_server,"servers"
             server_working=False
     for section in all_sections:
         if section is not 'identifier' and section.startswith('server') and section.startswith('client'):

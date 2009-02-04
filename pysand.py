@@ -6,7 +6,7 @@ from ident_gen import *
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
 
-DEBUG=True
+DEBUG=False
 
 class certainty_node: # One per protocol per stream
     """A certainty node describes a single node in the certainty table;
@@ -29,7 +29,7 @@ class certainty_node: # One per protocol per stream
         # Enforce default behavior. I hope this never happens.
         if half_stream not in ('c','s'):
             half_stream='c'
-            if self.debug: print "Forcing client search. Fix your coding, stupid."
+            if DEBUG: print "Forcing client search. Fix your coding, stupid."
         
         # Select the proper set of signatures
         if half_stream=='c':
@@ -43,13 +43,11 @@ class certainty_node: # One per protocol per stream
         else:
             return sigs[self.next[half_stream]]
 
-def ignore(a):
-    pass
 
 class sand:
     """The main pysand class. Instanciating more than one at a time
-    is not recommended."""
-    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None, pcap_interface=None, notroot="root", packet_count=-1, debug_mode=False):
+    is not recommended (read: will break stuff)."""
+    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None, pcap_interface=None, notroot="root", debug_mode=False):
         """Construct a new pysand object.
         Parameters:
         detect_callback_tcp: Callback function to be called when a new stream is detected.
@@ -64,6 +62,7 @@ class sand:
             pcap_file=None
         
         # Load all the identifiers from the specified directory.
+        if DEBUG: print 'Loading identifiers from', identifier_dir
         self.all_idents=self.load_idents(identifier_dir)
         
         # Storage init
@@ -72,18 +71,20 @@ class sand:
         self.index_table=dict()
         
         # Set up libnids
-        nids.param("scan_num_hosts", 0)  # Disable portscan detection        
+        nids.param("scan_num_hosts", 0)  # Disable portscan detection.
         if pcap_file is not None:
             nids.param("filename", pcap_file)
         if pcap_interface is not None:
             nids.param("device", pcap_interface)
-        nids.param("pcap_filter", "tcp") # Only capture TCP traffic
+        nids.param("pcap_filter", "tcp") # Only capture TCP traffic for now.
         #nids.param("tcp_workarounds",1) I don't think this line was even supported by the Python wrapper anyway.
-        nids.init() #
-        nids.register_tcp(self.handleTcpStream) # Maybe put after the next line. We'll see.
+        nids.init()
+        nids.register_tcp(self.handleTcpStream)
         
         
         # SAND Callback functions init
+        # Read these instance variables like a sort of mixed Hungarian notation:
+        # function_callback_new, identify, end_for tcp protocol
         self.f_cb_new_tcp = detect_callback_tcp
         self.f_cb_id_tcp = id_callback_tcp
         self.f_cb_end_tcp = end_callback_tcp
@@ -91,24 +92,23 @@ class sand:
 
         # Drop to run as a user
         if notroot is not "root":
-            (uid, gid) = pwd.getpwnam(NOTROOT)[2:4]
+            (uid, gid) = pwd.getpwnam(notroot)[2:4]
             os.setgroups([gid,])
             os.setgid(gid) #
             os.setuid(uid)
             if 0 in [os.getuid(), os.getgid()] + list(os.getgroups()):
-                if DEBUG: print "Supply better username, please!"
+                print "Supply better username, please!"
                 sys.exit(1)
         
         # Output our PID. Just in case we have to kill us.
-        print "pid: [", os.getpid()
+        #print "pid: [", os.getpid(),']'
     
         # Loop forever (network device), or until EOF (pcap file)
         # Note that an exception in the callback will break the loop!
         try:
             nids.run()
             i=1
-            while i>0: #Weird.
-                #i=nids.dispatch(1) #packet_count
+            while i>0:
                 i=nids.next()
         except nids.error, e:
             print "nids/pcap error:", e
@@ -116,10 +116,10 @@ class sand:
             print "misc. exception (runtime error in user callback?):", e
         
         # When finished, print debugging information (maybe):
-        #if DEBUG:
-            #for index,strm in self.index_table.iteritems():
-                    #print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
-        #exit()
+        if DEBUG:
+            for index,strm in self.index_table.iteritems():
+                    print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
+        exit()
 
     def load_idents(self, ident_dir):
         """Load into memory all of the protocol identifiers from ident_dir."""
@@ -134,12 +134,10 @@ class sand:
 
     def handleTcpStream(self, tcp_stream):
         """Callback function called by libnids when it receives a new packet."""
-        #if DEBUG: print "*****tcps -", str(tcp_stream.addr), " state:", tcp_stream.nids_state, " - ", tcp_stream
-        print "Handling a TCP stream."
         stream_id=tcp_stream.addr
-        print stream_id
+        if DEBUG: print "Handling a TCP stream.",stream_id
         if tcp_stream.nids_state == nids.NIDS_JUST_EST: # New connection/stream
-            print "New stream."
+            if DEBUG: print "New stream.", stream_id
             #self.stream_list = self.stream_list+[tcp_stream]
             tcp_stream.client.collect=1 # Signal to collect this data
             tcp_stream.server.collect=1
@@ -155,17 +153,12 @@ class sand:
             self.identifyStream(stream_id)
             self.f_cb_new_tcp(tcp_stream) #Call back.
         elif tcp_stream.nids_state == nids.NIDS_DATA: # Established connection receiving new data
-            #tcp_stream.discard(0) # Don't discard any of it. Keep following.
             index=self.stream_table[stream_id][0]
             ct = self.index_table[index][1]
             proto=self.index_table[index][3]
-            #if tcp_stream != self.index_table[index][0]:
-                #print "Problem: stream ", stream_id, "Doesn't match",self.index_table[index][2]
-                #self.index_table[index]=(tcp_stream,ct,stream_id,proto)
-                #self.stream_table[stream_id]=(index,ct,tcp_stream,proto)
             if proto is 'unknown':
                 self.identifyStream(stream_id)
-        elif tcp_stream.nids_state in end_states: #TODO: This doesn't seem to work.
+        elif tcp_stream.nids_state in end_states: #TODO: This doesn't seem to work. Except sometimes.
             self.f_cb_end_tcp(tcp_stream)
 
     def identifyStream(self, stream_id):
@@ -182,12 +175,24 @@ class sand:
     def searchStream(self,stream_id):
         tcp_stream=self.stream_table[stream_id][2]
         data = dict()
-        data['c'] = tcp_stream.server.data # These needed to be switched.
-        data['s'] = tcp_stream.client.data # I don't think it's my fault.
-        print "Length of ", stream_id, len(str(data['c'])), len(str(data['s']))
-        for cert_index in self.stream_table[stream_id][1]:
+        # There's a lot going on in the following lines that is, at first, unintuitive.
+        # First of all, due to weirdness somewhere in libnids (I'm quite sure it's not
+        # in the pysand code), their representation of the client does not jibe with
+        # our representation of a client. Somewhere in the pysand code, therefore,
+        # they need to be swapped. This is where that happens, and only here (I hope).
+        # Secondly, the data that libnids stores is held in a (by default) 4096-byte buffer;
+        # the pynids wrapper gives me direct access to this, so if I ask Python for
+        # the length of the data that I've gotten so far, it will always tell me
+        # 4096. The problem is that if I have less than 4096 bytes of data from a single
+        # half-stream, unpredictable behavior results. So let's make sure we're only
+        # going to search the correct substring.
+        # Whew! --George
+        data['c'] = tcp_stream.server.data[:tcp_stream.server.count]
+        data['s'] = tcp_stream.client.data[:tcp_stream.client.count]
+        if DEBUG: print "Length of ", stream_id, len(str(data['c'])), len(str(data['s']))
+        for cert_index in self.stream_table[stream_id][1]: # For each protocol node in a certainty table
             cert_node=self.stream_table[stream_id][1][cert_index]
-            for half_stream in ('s','c'):
+            for half_stream in ('s','c'):   # For each TCP half-stream
                 search_term=None
                 while search_term is not cert_node.next_search(half_stream):
                     search_term=cert_node.next_search(half_stream)
@@ -217,7 +222,7 @@ class sand:
         return ct
 
 def main():
-    libsand = sand(newStream,idStream,endStream,sys.argv[2],sys.argv[1], debug_mode=True)
+    libsand = sand(newStream,idStream,endStream,sys.argv[2],sys.argv[1], debug_mode=False)
     print "done"
     pass
 
@@ -228,8 +233,9 @@ def newStream(tcp_stream):
 def idStream(tcp_stream, proto_name):
     pass
     print "Identification made:", tcp_stream.addr, "is", proto_name
-    if(139 in tcp_stream.addr[1]):
-        print "Wii have a problem", len(str(tcp_stream.client.data)) #.encode('hex')
+    #if(139 in tcp_stream.addr[1]):
+        #print "Wii have a problem", str(tcp_stream.client.data) #.encode('hex')
+        #print tcp_stream.addr
     tcp_stream=None
 
 def endStream(tcp_stream):
@@ -237,7 +243,7 @@ def endStream(tcp_stream):
     print "Stream closed: ", tcp_stream.addr
 
 if __name__ == '__main__':
-    DEBUG=False
+    #DEBUG=True
     if len(sys.argv) == 3: # read a pcap file?
         pass
     else:
