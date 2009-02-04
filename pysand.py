@@ -70,6 +70,12 @@ class sand:
         self.stream_table=dict()
         self.index_table=dict()
         
+        ###
+        pcap_file=None
+        pcap_interface='eth0'
+        ###
+        
+        
         # Set up libnids
         nids.param("scan_num_hosts", 0)  # Disable portscan detection.
         if pcap_file is not None:
