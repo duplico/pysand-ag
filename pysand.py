@@ -241,9 +241,6 @@ def newStream(tcp_stream):
 def idStream(tcp_stream, proto_name):
     pass
     print "Identification made:", tcp_stream.addr, "is", proto_name
-    #if(139 in tcp_stream.addr[1]):
-        #print "Wii have a problem", str(tcp_stream.client.data) #.encode('hex')
-        #print tcp_stream.addr
     tcp_stream=None
 
 def endStream(tcp_stream):
