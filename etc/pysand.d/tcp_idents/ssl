@@ -1,0 +1,16 @@
+; pysand format identifier for SSL
+; Author: George Louthan
+
+[identifier]
+protocol = "SSL"
+threshold = 2
+
+[client0]
+start	= "\x01\x03"
+sig	= ""
+finish	= "\x0b"
+
+[server0]
+start	= "\x16\x03"
+sig	= ""
+finish	= "\x16\x03"

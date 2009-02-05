@@ -7,18 +7,19 @@ from ident_gen import *
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
 
-DEBUG=False
+#DEBUG=False
 
 class certainty_node: # One per protocol per stream
     """A certainty node describes a single node in the certainty table;
     there should exist a single certainty node per protocol per stream.
     It handles tracking our certainty about its identification."""
-    def __init__(self, identifier):
+    def __init__(self, identifier, debug):
         """Construct a new certainty node based on an identifier object."""
         self.ident=identifier
         self.next={'c': 0, 's': 0}
         self.curs={'c': 0, 's': 0}
         self.certainty=0
+        self.debug=debug
     
     def next_search(self,half_stream='c'):
         """Returns the next string to search the half-stream for, depending
@@ -30,7 +31,7 @@ class certainty_node: # One per protocol per stream
         # Enforce default behavior. I hope this never happens.
         if half_stream not in ('c','s'):
             half_stream='c'
-            if DEBUG: print "Forcing client search. Fix your coding, stupid."
+            if self.debug: print "Forcing client search. Fix your coding, stupid."
         
         # Select the proper set of signatures
         if half_stream=='c':
@@ -48,7 +49,7 @@ class certainty_node: # One per protocol per stream
 class sand:
     """The main pysand class. Instanciating more than one at a time
     is not recommended (read: will break stuff)."""
-    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None, pcap_interface=None, notroot="root", debug_mode=False):
+    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None, pcap_interface=None, notroot="root", debug_mode=False, print_results=False):
         """Construct a new pysand object.
         Parameters:
         detect_callback_tcp: Callback function to be called when a new stream is detected.
@@ -57,13 +58,13 @@ class sand:
         identifier_dir: The directory containing our identifier specifications.
         pcap_file: Optional. The pcap file to use. If omitted, captures from the wire."""
         
-        DEBUG=debug_mode
+        self.debug=debug_mode
         
         if pcap_file == 'None':
             pcap_file=None
         
         # Load all the identifiers from the specified directory.
-        if DEBUG: print 'Loading identifiers from', identifier_dir
+        if self.debug: print 'Loading identifiers from', identifier_dir
         self.all_idents=self.load_idents(identifier_dir)
         
         # Storage init
@@ -95,7 +96,7 @@ class sand:
         self.f_cb_new_tcp = detect_callback_tcp
         self.f_cb_id_tcp = id_callback_tcp
         self.f_cb_end_tcp = end_callback_tcp
-        if DEBUG: print "Callbacks registered"
+        if self.debug: print "Callbacks registered"
 
         # Drop to run as a user
         if notroot is not "root":
@@ -123,7 +124,7 @@ class sand:
             print "misc. exception (runtime error in user callback?):", e
         
         # When finished, print debugging information (maybe):
-        if DEBUG:
+        if self.debug or print_results:
             for index,strm in self.index_table.iteritems():
                     print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
         exit()
@@ -133,7 +134,7 @@ class sand:
         identifiers=[]
         for file in os.listdir(ident_dir): # For every file in ident_dir
             new_identifier = load_ident(os.path.join(ident_dir,file))
-            if DEBUG: print 'Loading identifier: ', load_ident(os.path.join(ident_dir,file))
+            if self.debug: print 'Loading identifier: ', load_ident(os.path.join(ident_dir,file))
             if new_identifier is not None:
                 identifiers+=[new_identifier]
                 #print "Added",os.path.join(ident_dir,file)
@@ -142,9 +143,9 @@ class sand:
     def handleTcpStream(self, tcp_stream):
         """Callback function called by libnids when it receives a new packet."""
         stream_id=tcp_stream.addr
-        if DEBUG: print "Handling a TCP stream.",stream_id
+        if self.debug: print "Handling a TCP stream.",stream_id
         if tcp_stream.nids_state == nids.NIDS_JUST_EST: # New connection/stream
-            if DEBUG: print "New stream.", stream_id
+            if self.debug: print "New stream.", stream_id
             #self.stream_list = self.stream_list+[tcp_stream]
             tcp_stream.client.collect=1 # Signal to collect this data
             tcp_stream.server.collect=1
@@ -196,7 +197,7 @@ class sand:
         # Whew! --George
         data['c'] = tcp_stream.server.data[:tcp_stream.server.count]
         data['s'] = tcp_stream.client.data[:tcp_stream.client.count]
-        if DEBUG: print "Length of ", stream_id, len(str(data['c'])), len(str(data['s']))
+        if self.debug: print "Length of ", stream_id, len(str(data['c'])), len(str(data['s']))
         for cert_index in self.stream_table[stream_id][1]: # For each protocol node in a certainty table
             cert_node=self.stream_table[stream_id][1][cert_index]
             for half_stream in ('s','c'):   # For each TCP half-stream
@@ -205,10 +206,10 @@ class sand:
                     search_term=cert_node.next_search(half_stream)
                     if search_term is not None: # None => no more client sigs to find.
                         found_loc = str(data[half_stream]).find(cert_node.next_search(half_stream)[0]) #, cert_node.curs[half_stream])
-                        if DEBUG: print "Searching for",cert_node.next_search(half_stream)[0], "in",half_stream,"in",stream_id
+                        if self.debug: print "Searching for",cert_node.next_search(half_stream)[0], "in",half_stream,"in",stream_id
                         if found_loc is not -1:
                             cert_node.certainty+=1
-                            if DEBUG: print "I found",cert_node.next_search(half_stream)[0],"-- Certainty of ID is ", cert_node.certainty, " / ", cert_node.ident.threshold
+                            if self.debug: print "I found",cert_node.next_search(half_stream)[0],"-- Certainty of ID is ", cert_node.certainty, " / ", cert_node.ident.threshold
                             #print cert_node.next_search(half_stream)[0], "in\n",str(data[half_stream])
                             cert_node.next[half_stream]+=1
                             if cert_node.certainty == cert_node.ident.threshold:
@@ -218,18 +219,18 @@ class sand:
                         else:
                             pass
                     else:
-                        if DEBUG: print "No more sigs to find."
+                        if self.debug: print "No more sigs to find."
         return False
                     
     
     def certainty_table(self,identifiers):
         ct=dict()
         for i in identifiers:
-            ct[i.proto_name]=certainty_node(i)
+            ct[i.proto_name]=certainty_node(i, self.debug)
         return ct
 
-def main(interface,pcapfile,identdir):
-    libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface, debug_mode=False)
+def main(interface,pcapfile,identdir, debug, results):
+    libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface, debug_mode=debug, print_results=results)
     print "done"
     pass
 
@@ -256,17 +257,16 @@ if __name__ == '__main__':
     interface=None
     pcapfile=None
     identdir=None
+    debug=False
+    results=False
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hp:i:s:")
+        opts, args = getopt.getopt(sys.argv[1:], "hp:i:s:vr")
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         usage()
         sys.exit(2)
-    output = None
-    verbose = False
     for o, a in opts:
-        print o
         if o == "-p":
             pcapfile=a
         if o == "-s":
@@ -276,6 +276,10 @@ if __name__ == '__main__':
             sys.exit()
         elif o in ("-i"):
             interface=a
+        elif o == '-v':
+            debug=True
+        elif o == '-r':
+            results=True
         else:
             usage()
     if pcapfile==None and interface==None:
@@ -288,4 +292,4 @@ if __name__ == '__main__':
         usage()
         exit()
         
-    main(interface,pcapfile,identdir)
+    main(interface,pcapfile,identdir, debug, results)

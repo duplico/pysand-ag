@@ -1,0 +1,15 @@
+; pysand format identifier for SSH
+
+[identifier]
+protocol = "BitTorrent"
+threshold = 2
+
+[client0]
+start	= "\x13BitTorrent protocol"
+sig	= "null"
+finish	= ""
+
+[server0]
+start	= "\x13BitTorrent protocol"
+sig	= "null"
+finish	= ""
