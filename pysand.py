@@ -120,13 +120,17 @@ class sand:
                 i=nids.next()
         except nids.error, e:
             print "nids/pcap error:", e
+        except KeyboardInterrupt:
+            print 'INTERRUPTED GRERRRR ARRRGGGHHHH!!!!!!'
         except Exception, e:
             print "misc. exception (runtime error in user callback?):", e
+        finally:
+            if self.debug or print_results:
+                for index,strm in self.index_table.iteritems():
+                    print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
+            
         
         # When finished, print debugging information (maybe):
-        if self.debug or print_results:
-            for index,strm in self.index_table.iteritems():
-                    print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
         exit()
 
     def load_idents(self, ident_dir):
