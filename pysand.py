@@ -3,6 +3,7 @@
 import os, pwd, sys
 import nids
 import getopt
+import datetime
 from ident_gen import *
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
@@ -77,7 +78,6 @@ class sand:
         #pcap_interface='eth0'
         ###
         
-        
         # Set up libnids
         nids.param("scan_num_hosts", 0)  # Disable portscan detection.
         if pcap_file is not None:
@@ -109,8 +109,9 @@ class sand:
                 sys.exit(1)
         
         # Output our PID. Just in case we have to kill us.
-        #print "pid: [", os.getpid(),']'
+        print "pid: [", os.getpid(),']'
     
+        start_time = datetime.datetime.now()
         # Loop forever (network device), or until EOF (pcap file)
         # Note that an exception in the callback will break the loop!
         try:
@@ -121,13 +122,17 @@ class sand:
         except nids.error, e:
             print "nids/pcap error:", e
         except KeyboardInterrupt:
-            print 'INTERRUPTED GRERRRR ARRRGGGHHHH!!!!!!'
+            print 'Interrupted by user.'
         except Exception, e:
             print "misc. exception (runtime error in user callback?):", e
         finally:
+            end_time=datetime.datetime.now()
             if self.debug or print_results:
                 for index,strm in self.index_table.iteritems():
                     print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
+                    run_time=str(end_time-start_time)
+                    print 'Took',run_time
+            exit()
             
         
         # When finished, print debugging information (maybe):
