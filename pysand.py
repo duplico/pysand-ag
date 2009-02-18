@@ -132,11 +132,6 @@ class sand:
                     print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
                     run_time=str(end_time-start_time)
                     print 'Took',run_time
-            exit()
-            
-        
-        # When finished, print debugging information (maybe):
-        exit()
 
     def load_idents(self, ident_dir):
         """Load into memory all of the protocol identifiers from ident_dir."""
