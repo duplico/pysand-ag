@@ -1,0 +1,15 @@
+; pysand format identifier for irc
+
+[identifier]
+protocol = "IRC"
+threshold = 2
+
+[client0]
+start   = "NICK"
+sig     = "nick"
+finish  = "\n"
+
+[client1]
+start	= "USER"
+sig	= "user"
+finish	= "\n"
