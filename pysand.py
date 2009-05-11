@@ -107,6 +107,8 @@ class sand:
             if 0 in [os.getuid(), os.getgid()] + list(os.getgroups()):
                 print "Supply better username, please!"
                 sys.exit(1)
+        else:
+            print 'Pysand is running as root. This may not be advised.'
         
         # Output our PID. Just in case we have to kill us.
         print "pid: [", os.getpid(),']'
@@ -233,8 +235,8 @@ class sand:
             ct[i.proto_name]=certainty_node(i, self.debug)
         return ct
 
-def main(interface,pcapfile,identdir, debug, results):
-    libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface, debug_mode=debug, print_results=results)
+def main(interface,pcapfile,identdir, debug, results, nr):
+    libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface, debug_mode=debug, print_results=results, notroot=nr)
     pass
 
 def newStream(tcp_stream):
@@ -259,8 +261,9 @@ if __name__ == '__main__':
     identdir=None
     debug=False
     results=False
+    user='root'
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hp:i:s:vr")
+        opts, args = getopt.getopt(sys.argv[1:], "hp:i:s:vru:")
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -280,6 +283,8 @@ if __name__ == '__main__':
             debug=True
         elif o == '-r':
             results=True
+        elif o == '-u':
+            user=a
         else:
             usage()
     if pcapfile==None and interface==None:
@@ -291,4 +296,4 @@ if __name__ == '__main__':
     if identdir==None:
         usage()
         exit()        
-    main(interface,pcapfile,identdir, debug, results)
+    main(interface,pcapfile,identdir, debug, results, user)
