@@ -235,21 +235,20 @@ class sand:
 
 def main(interface,pcapfile,identdir, debug, results):
     libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface, debug_mode=debug, print_results=results)
-    print "done"
     pass
 
 def newStream(tcp_stream):
     pass
-    print "New stream opened: ", tcp_stream.addr
+    #print "New stream opened: ", tcp_stream.addr
 
 def idStream(tcp_stream, proto_name):
     pass
-    print "Identification made:", tcp_stream.addr, "is", proto_name
+    #print "Identification made:", tcp_stream.addr, "is", proto_name
     tcp_stream=None
 
 def endStream(tcp_stream):
     pass
-    print "Stream closed: ", tcp_stream.addr
+    #print "Stream closed: ", tcp_stream.addr
 
 def usage():
     print 'sudo python pysand.py -s identdir {-i interface | -p pcapfile}'
@@ -291,6 +290,5 @@ if __name__ == '__main__':
         exit()
     if identdir==None:
         usage()
-        exit()
-        
+        exit()        
     main(interface,pcapfile,identdir, debug, results)
