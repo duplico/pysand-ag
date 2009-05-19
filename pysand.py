@@ -253,7 +253,10 @@ def endStream(tcp_stream):
     #print "Stream closed: ", tcp_stream.addr
 
 def usage():
-    print 'sudo python pysand.py -s identdir {-i interface | -p pcapfile}'
+    print 'sudo python pysand.py -s identdir {-i interface | -p pcapfile} [-u username] [-vr]'
+    print 'v: verbose'
+    print 'r: results'
+    print 'u: user to run as'
 
 if __name__ == '__main__':
     interface=None
