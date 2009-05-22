@@ -61,6 +61,8 @@ class sand:
         
         self.debug=debug_mode
         
+        self.stop_when_possible=False
+        
         if pcap_file == 'None':
             pcap_file=None
         
@@ -117,7 +119,6 @@ class sand:
         # Loop forever (network device), or until EOF (pcap file)
         # Note that an exception in the callback will break the loop!
         try:
-            nids.run()
             i=1
             while i>0:
                 i=nids.next()
@@ -145,6 +146,10 @@ class sand:
                 identifiers+=[new_identifier]
                 #print "Added",os.path.join(ident_dir,file)
         return identifiers
+
+    def cease(self):
+        self.stop_when_possible=True
+        exit()
 
     def handleTcpStream(self, tcp_stream):
         """Callback function called by libnids when it receives a new packet."""
