@@ -5,6 +5,7 @@ import nids
 import getopt
 import datetime
 from ident_gen import *
+import time
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
 
@@ -50,7 +51,9 @@ class certainty_node: # One per protocol per stream
 class sand:
     """The main pysand class. Instanciating more than one at a time
     is not recommended (read: will break stuff)."""
-    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir, pcap_file=None, pcap_interface=None, notroot="root", debug_mode=False, print_results=False):
+    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir,
+                 pcap_file=None, pcap_interface=None, notroot="root", debug_mode=False,
+                 print_results=False, go=True, pcap_timeout=1024):
         """Construct a new pysand object.
         Parameters:
         detect_callback_tcp: Callback function to be called when a new stream is detected.
@@ -87,6 +90,7 @@ class sand:
         if pcap_interface is not None:
             nids.param("device", pcap_interface)
         nids.param("pcap_filter", "tcp") # Only capture TCP traffic for now.
+        nids.param("pcap_timeout",pcap_timeout)
         #nids.param("tcp_workarounds",1) I don't think this line was even supported by the Python wrapper anyway.
         nids.init()
         nids.register_tcp(self.handleTcpStream)
@@ -118,24 +122,37 @@ class sand:
         start_time = datetime.datetime.now()
         # Loop forever (network device), or until EOF (pcap file)
         # Note that an exception in the callback will break the loop!
+        if go:
+            try:
+                print 'going'
+                i=1
+                while i>0:
+                    i=nids.next()
+            except nids.error, e:
+                print "nids/pcap error:", e
+            except KeyboardInterrupt:
+                print 'Interrupted by user.'
+            except Exception, e:
+                print "misc. exception (runtime error in user callback?):", e
+            finally:
+                end_time=datetime.datetime.now()
+                if self.debug or print_results:
+                    for index,strm in self.index_table.iteritems():
+                        print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
+                        run_time=str(end_time-start_time)
+                        print 'Took',run_time
+    def step(self, *args):
+        if self.debug: print 'Dispatching'
         try:
-            i=1
-            while i>0:
-                i=nids.next()
+            nids.dispatch(-1)
         except nids.error, e:
             print "nids/pcap error:", e
         except KeyboardInterrupt:
             print 'Interrupted by user.'
         except Exception, e:
             print "misc. exception (runtime error in user callback?):", e
-        finally:
-            end_time=datetime.datetime.now()
-            if self.debug or print_results:
-                for index,strm in self.index_table.iteritems():
-                    print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
-                    run_time=str(end_time-start_time)
-                    print 'Took',run_time
-
+        if self.debug: print 'Done dispatching.'
+    
     def load_idents(self, ident_dir):
         """Load into memory all of the protocol identifiers from ident_dir."""
         identifiers=[]
