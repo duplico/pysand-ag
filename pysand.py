@@ -6,6 +6,7 @@ import getopt
 import datetime
 from ident_gen import *
 import time
+import traceback
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
 
@@ -133,7 +134,8 @@ class sand:
             except KeyboardInterrupt:
                 print 'Interrupted by user.'
             except Exception, e:
-                print "misc. exception (runtime error in user callback?):", e
+                print "misc. exception (runtime error in user callback?):"
+                traceback.print_exc()
             finally:
                 end_time=datetime.datetime.now()
                 if self.debug or print_results:
