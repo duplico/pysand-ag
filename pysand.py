@@ -299,7 +299,7 @@ if __name__ == '__main__':
     for o, a in opts:
         if o == "-p":
             pcapfile=a
-        if o == "-s":
+        elif o == "-s":
             identdir=a
         elif o in ("-h", "--help"):
             usage()
@@ -314,6 +314,7 @@ if __name__ == '__main__':
             user=a
         else:
             usage()
+            exit()
     if pcapfile==None and interface==None:
         usage()
         exit()
