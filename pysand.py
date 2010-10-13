@@ -76,9 +76,27 @@ class sand:
     associated with a protocol, the *id* callback function will be called; and
     when a stream is disconnected, the *end* callback function will be called.
     
-    Identification can begin immediately or on a delay; debuggin information can
-    be enabled, in which case it will be sent to StdOut. Optionally, results of
-    the detection may be printed to StdOut by pysand.
+    Identification can begin immediately or on a delay; debugging information
+    can be enabled, in which case it will be sent to StdOut. Optionally,
+    results of the detection may be printed to StdOut by pysand.
+    
+    The new pysand object will use the tcp callbacks specified, identifying
+    all of the protocols with identifiers in the identifier directory, and
+    read either from the wire (if no pcap file is specified) or from a
+    pcap file. If neither a network interface nor a pcap file is specified,
+    pysand will attempt to capture from the default network interface.
+    
+    :param function detect_callback_tcp: Callback function for new stream detection
+    :param function id_callback_tcp: Callback function for stream identification
+    :param function end_callback_tcp: Callback function for stream closing
+    :param string identifier_dir: Directory to load identifier files from
+    :param string pcap_file: Path to pcap file from which to read traffic
+    :param string pcap_interface: Interface from which to sniff packets
+    :param string notroot: Non-root user to switch to during execution
+    :param boolean debug_mode: Whether to print debugging messages
+    :param boolean print_results: Whether to print result information after execution.
+    :param boolean go: Whether to run immediately after initialization.
+    :param int pcap_timeout: The pcap read timeout, whose support is platform dependent.
     
     Due to Python's `Global Interpreter Lock <http://docs.python.org/c-api/init.html#thread-state-and-the-global-interpreter-lock>`_,
     instantiating more than one object of this class at a time will cause
@@ -105,14 +123,7 @@ class sand:
                  notroot="root", debug_mode=False, print_results=False,
                  go=True, pcap_timeout=1024):
         """Construct a new pysand object.
-        
-        The new pysand object will use the tcp callbacks specified, identifying
-        all of the protocols with identifiers in the identifier directory, and
-        read either from the wire (if no pcap file is specified) or from a
-        pcap file. If neither a network interface nor a pcap file is specified,
-        pysand will attempt to capture from the default network interface.
-        
-        Parameters:
+
         :param function detect_callback_tcp: Callback function for new stream detection
         :param function id_callback_tcp: Callback function for stream identification
         :param function end_callback_tcp: Callback function for stream closing
