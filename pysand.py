@@ -32,7 +32,7 @@ class certainty_node: # One per protocol per stream
         self.debug=debug
     
     def next_search(self,half_stream='c'):
-        """Return the next string to search a half-stream for.
+        """Return the next signature to search a half-stream for.
         
         Which half-stream's next signature is determined by the character passed
         to the half_stream parameter, which defaults to client.
@@ -40,8 +40,10 @@ class certainty_node: # One per protocol per stream
         :param string half_stream: the half-stream to use: 'c' for client or 's'
         for server.
         
-        :returns: The next string to search for.
-        :rtype string"""
+        :returns: The next signature to search for.
+        :rtype tuple
+        
+        """
         
         assert(half_stream in ('c','s'))
         
@@ -59,30 +61,67 @@ class certainty_node: # One per protocol per stream
 
 
 class sand:
-    """The main pysand class. Instanciating more than one at a time
-    is not recommended (read: will break stuff)."""
-    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp, identifier_dir,
-                 pcap_file=None, pcap_interface=None, notroot="root", debug_mode=False,
-                 print_results=False, go=True, pcap_timeout=1024):
+    
+    """Main pysand class for identifying protocols in pcapfiles or from the wire.
+    
+    The correct way to use this class is by initializing a singleton object,
+    passing it functions to be called for callback events. Other processing
+    should be done in a separate analysis module. Callbacks are currently
+    provided for the detection of a new stream, the identification of a stream,
+    and the closure of a stream. Analysis modules should not need to use any
+    class except this one.
+    
+    Pysand will read packets either from the wire (from a specified interface or
+    the default interface) or from a specified pcap file; when a new stream is
+    detected, the *detect* callback function will be called; when a stream is
+    associated with a protocol, the *id* callback function will be called; and
+    when a stream is disconnected, the *end* callback function will be called.
+    
+    Identification can begin immediately or on a delay; debuggin information can
+    be enabled, in which case it will be sent to StdOut. Optionally, results of
+    the detection may be printed to StdOut by pysand.
+    
+    Due to Python's `Global Interpreter Lock <http://docs.python.org/c-api/init.html#thread-state-and-the-global-interpreter-lock>`_
+    
+    Instanciating more than one object of this class at a time will cause
+    problems.
+    
+    """
+    
+    def __init__(self, detect_callback_tcp, id_callback_tcp, end_callback_tcp,
+                 identifier_dir, pcap_file=None, pcap_interface=None,
+                 notroot="root", debug_mode=False, print_results=False,
+                 go=True, pcap_timeout=1024):
         """Construct a new pysand object.
+        
+        The new pysand object will use the tcp callbacks specified, identifying
+        all of the protocols with identifiers in the identifier directory, and
+        read either from the wire (if no pcap file is specified) or from a
+        pcap file. If neither a network interface nor a pcap file is specified,
+        pysand will attempt to capture from the default network interface.
+        
         Parameters:
-        detect_callback_tcp: Callback function to be called when a new stream is detected.
-        id_callback_tcp: Callback function to be called when a stream is identified.
-        end_callback_tcp: Callback function to be called when a stream is closed.
-        identifier_dir: The directory containing our identifier specifications.
-        pcap_file: Optional. The pcap file to use. If omitted, captures from the wire."""
+        :param function detect_callback_tcp: Callback function for new stream detection
+        :param function id_callback_tcp: Callback function for stream identification
+        :param function end_callback_tcp: Callback function for stream closing
+        :param string identifier_dir: Directory to load identifier files from
+        :param string pcap_file: Path to pcap file from which to read traffic
+        :param string pcap_interface: Interface from which to sniff packets
+        :param string notroot: Non-root user to switch to during execution
+        :param boolean debug_mode: Whether to print debugging messages
+        :param boolean print_results: Whether to print result information after execution.
+        :param boolean go: Whether to run immediately after initialization.
+        :param int pcap_timeout: The pcap read timeout, whose support is platform dependent.
         
-        self.debug=debug_mode
+        """
         
-        self.stop_when_possible=False
-
+        # Instance variables for configuration
+        self.debug=debug_mode        
+        self.stop_when_possible=False #TODO: make useful or merge w/ go
         self.time = ""
         self.srcIP = ""
         self.destIP = ""        
 
-        if pcap_file == 'None':
-            pcap_file=None
-        
         # Load all the identifiers from the specified directory.
         if self.debug: print 'Loading identifiers from', identifier_dir
         self.all_idents=self.load_idents(identifier_dir)
@@ -92,11 +131,6 @@ class sand:
         self.stream_table=dict()
         self.index_table=dict()
         
-        ###
-        #pcap_file=None
-        #pcap_interface='eth0'
-        ###
-        
         # Set up libnids
         nids.param("scan_num_hosts", 0)  # Disable portscan detection.
         if pcap_file is not None:
@@ -105,7 +139,6 @@ class sand:
             nids.param("device", pcap_interface)
         nids.param("pcap_filter", "tcp") # Only capture TCP traffic for now.
         nids.param("pcap_timeout",pcap_timeout)
-        #nids.param("tcp_workarounds",1) I don't think this line was even supported by the Python wrapper anyway.
         nids.init()
         nids.register_tcp(self.handleTcpStream)
         
@@ -131,14 +164,16 @@ class sand:
             print 'Pysand is running as root. This may not be advised.'
         
         # Output our PID. Just in case we have to kill us.
-        print "pid: [", os.getpid(),']'
+        # TODO: libraries shouldn't print.
+        print "pysand pid: [", os.getpid(),']'
     
         start_time = datetime.datetime.now()
         # Loop forever (network device), or until EOF (pcap file)
         # Note that an exception in the callback will break the loop!
+        # TODO: currently no way to undo "go".
         if go:
             try:
-                print 'going'
+                if self.debug: print 'going'
                 i=1
                 while i>0:
                     #i=nids.next()
@@ -157,6 +192,7 @@ class sand:
                         print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
                         run_time=str(end_time-start_time)
                         print 'Took',run_time
+    
     def step(self, *args):
         if self.debug: print 'Dispatching'
         try:
@@ -177,10 +213,11 @@ class sand:
             if self.debug: print 'Loading identifier: ', load_ident(os.path.join(ident_dir,file))
             if new_identifier is not None:
                 identifiers+=[new_identifier]
-                #print "Added",os.path.join(ident_dir,file)
+                if self.debug: print "Added",os.path.join(ident_dir,file)
         return identifiers
 
     def cease(self):
+        # TODO: make this do something
         self.stop_when_possible=True
         exit()
 
@@ -203,7 +240,6 @@ class sand:
             new_ct=self.certainty_table(self.all_idents)
             self.index_table[self.next_index]=(tcp_stream,new_ct,stream_id,'unknown') #TODO: These tuples should probably be the same.
             self.stream_table[stream_id]=(self.next_index,new_ct,tcp_stream,'unknown')
-            #print "*******", tcp_stream.addr,"***",stream_id
             self.next_index+=1
             self.identifyStream(stream_id)
             self.f_cb_new_tcp(tcp_stream) #Call back.
@@ -278,7 +314,7 @@ class sand:
                 search_term=None
                 while search_term is not cert_node.next_search(half_stream):
                     search_term=cert_node.next_search(half_stream)
-                    print "Search Term: " + str(search_term)
+                    if self.debug: print "Search Term: " + str(search_term)
                     if search_term is not None: # None => no more client sigs to find.
                         found_loc = str(data[half_stream]).find(cert_node.next_search(half_stream)[0]) #, cert_node.curs[half_stream])
                         #print "DATA!!!!: " + str(data[half_stream])
@@ -294,7 +330,7 @@ class sand:
                             if cert_node.certainty == cert_node.ident.threshold:
                                 tcp_stream.client.collect = 0
                                 tcp_stream.server.collect = 0
-                                print "yaya " + str(cert_node.ident.proto_name)
+                                if self.debug: print "yaya " + str(cert_node.ident.proto_name) # TODO
                                 return cert_node.ident.proto_name
                         else:
                             pass
