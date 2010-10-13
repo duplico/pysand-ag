@@ -80,8 +80,8 @@ class sand:
     be enabled, in which case it will be sent to StdOut. Optionally, results of
     the detection may be printed to StdOut by pysand.
     
-    Due to Python's `Global Interpreter Lock <http://docs.python.org/c-api/init.html#thread-state-and-the-global-interpreter-lock>`_, i
-    instanciating more than one object of this class at a time will cause
+    Due to Python's `Global Interpreter Lock <http://docs.python.org/c-api/init.html#thread-state-and-the-global-interpreter-lock>`_,
+    instantiating more than one object of this class at a time will cause
     problems.
     
     Tested in Ubuntu, various versions. Do something like this::
