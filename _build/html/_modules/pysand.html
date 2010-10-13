@@ -1,0 +1,480 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pysand &mdash; Pysand v0.1dev documentation</title>
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Pysand v0.1dev documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Pysand v0.1dev documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for pysand</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">pwd</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">nids</span>
+<span class="kn">import</span> <span class="nn">getopt</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">from</span> <span class="nn">ident_gen</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+
+<span class="n">end_states</span> <span class="o">=</span> <span class="p">(</span><span class="n">nids</span><span class="o">.</span><span class="n">NIDS_CLOSE</span><span class="p">,</span> <span class="n">nids</span><span class="o">.</span><span class="n">NIDS_TIMEOUT</span><span class="p">,</span> <span class="n">nids</span><span class="o">.</span><span class="n">NIDS_RESET</span><span class="p">)</span>
+
+<div class="viewcode-block" id="certainty_node"><a class="viewcode-back" href="../index.html#pysand.certainty_node">[docs]</a><span class="k">class</span> <span class="nc">certainty_node</span><span class="p">:</span> <span class="c"># One per protocol per stream</span>
+    
+    <span class="sd">&quot;&quot;&quot;Describes a single cell in the certainty table: matches per stream per signature.</span>
+<span class="sd">    </span>
+<span class="sd">    The certainty table consists of a table of certainty nodes, with each certainty</span>
+<span class="sd">    node representing our level of certainty that a particular stream belongs to</span>
+<span class="sd">    a particular protocol. It also contains some basic utility for selecting the</span>
+<span class="sd">    next string to search for from a protocol identifier.&quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">debug</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Construct a new certainty node based on an identifier object.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ident</span><span class="o">=</span><span class="n">identifier</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">next</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;c&#39;</span><span class="p">:</span> <span class="mf">0</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">:</span> <span class="mf">0</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curs</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;c&#39;</span><span class="p">:</span> <span class="mf">0</span><span class="p">,</span> <span class="s">&#39;s&#39;</span><span class="p">:</span> <span class="mf">0</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">certainty</span><span class="o">=</span><span class="mf">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="o">=</span><span class="n">debug</span>
+    
+<div class="viewcode-block" id="certainty_node.next_search"><a class="viewcode-back" href="../index.html#pysand.certainty_node.next_search">[docs]</a>    <span class="k">def</span> <span class="nf">next_search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">half_stream</span><span class="o">=</span><span class="s">&#39;c&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the next signature to search a half-stream for.</span>
+<span class="sd">        </span>
+<span class="sd">        Which half-stream&#39;s next signature is determined by the character passed</span>
+<span class="sd">        to the half_stream parameter, which defaults to client.</span>
+<span class="sd">        </span>
+<span class="sd">        :param string half_stream: the half-stream to use: &#39;c&#39; for client or &#39;s&#39;</span>
+<span class="sd">        for server.</span>
+<span class="sd">        </span>
+<span class="sd">        :returns: The next signature to search for.</span>
+<span class="sd">        :rtype tuple</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">assert</span><span class="p">(</span><span class="n">half_stream</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">,</span><span class="s">&#39;s&#39;</span><span class="p">))</span>
+        
+        <span class="c"># Select the proper set of signatures</span>
+        <span class="k">if</span> <span class="n">half_stream</span><span class="o">==</span><span class="s">&#39;c&#39;</span><span class="p">:</span>
+            <span class="n">sigs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ident</span><span class="o">.</span><span class="n">c_sigs</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sigs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ident</span><span class="o">.</span><span class="n">s_sigs</span>
+        
+        <span class="c"># Return the proper signature, if it exists. Otherwise None.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sigs</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">next</span><span class="p">[</span><span class="n">half_stream</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">sigs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">next</span><span class="p">[</span><span class="n">half_stream</span><span class="p">]]</span>
+
+</div></div>
+<div class="viewcode-block" id="sand"><a class="viewcode-back" href="../index.html#pysand.sand">[docs]</a><span class="k">class</span> <span class="nc">sand</span><span class="p">:</span>
+    
+    <span class="sd">&quot;&quot;&quot;Main pysand class for identifying protocols in pcapfiles or from the wire.</span>
+<span class="sd">    </span>
+<span class="sd">    The correct way to use this class is by initializing a singleton object,</span>
+<span class="sd">    passing it functions to be called for callback events. Other processing</span>
+<span class="sd">    should be done in a separate analysis module. Callbacks are currently</span>
+<span class="sd">    provided for the detection of a new stream, the identification of a stream,</span>
+<span class="sd">    and the closure of a stream. Analysis modules should not need to use any</span>
+<span class="sd">    class except this one.</span>
+<span class="sd">    </span>
+<span class="sd">    Pysand will read packets either from the wire (from a specified interface or</span>
+<span class="sd">    the default interface) or from a specified pcap file; when a new stream is</span>
+<span class="sd">    detected, the *detect* callback function will be called; when a stream is</span>
+<span class="sd">    associated with a protocol, the *id* callback function will be called; and</span>
+<span class="sd">    when a stream is disconnected, the *end* callback function will be called.</span>
+<span class="sd">    </span>
+<span class="sd">    Identification can begin immediately or on a delay; debuggin information can</span>
+<span class="sd">    be enabled, in which case it will be sent to StdOut. Optionally, results of</span>
+<span class="sd">    the detection may be printed to StdOut by pysand.</span>
+<span class="sd">    </span>
+<span class="sd">    Due to Python&#39;s `Global Interpreter Lock &lt;http://docs.python.org/c-api/init.html#thread-state-and-the-global-interpreter-lock&gt;`_</span>
+<span class="sd">    </span>
+<span class="sd">    Instanciating more than one object of this class at a time will cause</span>
+<span class="sd">    problems.</span>
+<span class="sd">    </span>
+<span class="sd">    Tested in Ubuntu, various versions. Do something like this::</span>
+<span class="sd">    </span>
+<span class="sd">    # apt-get install libnet-dev libpcap-dev build-essential python-dev</span>
+<span class="sd">    # easy_install sphinx</span>
+<span class="sd">    # wget http://pilcrow.madison.wi.us/pynids/pynids-0.5.tar.gz</span>
+<span class="sd">    # tar -xzvf pynids-0.5.tar.gz</span>
+<span class="sd">    # cd pynids-0.5</span>
+<span class="sd">    </span>
+<span class="sd">    You need to change the #elif on line ``408`` of libnids-1.19/src/killtcp.c to an</span>
+<span class="sd">    ``#else``. You may also need to run ``$ export CFLAGS=$CFLAGS -fPIC`` Then::</span>
+<span class="sd">    </span>
+<span class="sd">    # python setup.py build</span>
+<span class="sd">    # python setup.py install</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detect_callback_tcp</span><span class="p">,</span> <span class="n">id_callback_tcp</span><span class="p">,</span> <span class="n">end_callback_tcp</span><span class="p">,</span>
+                 <span class="n">identifier_dir</span><span class="p">,</span> <span class="n">pcap_file</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">pcap_interface</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">notroot</span><span class="o">=</span><span class="s">&quot;root&quot;</span><span class="p">,</span> <span class="n">debug_mode</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">print_results</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                 <span class="n">go</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">pcap_timeout</span><span class="o">=</span><span class="mf">1024</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Construct a new pysand object.</span>
+<span class="sd">        </span>
+<span class="sd">        The new pysand object will use the tcp callbacks specified, identifying</span>
+<span class="sd">        all of the protocols with identifiers in the identifier directory, and</span>
+<span class="sd">        read either from the wire (if no pcap file is specified) or from a</span>
+<span class="sd">        pcap file. If neither a network interface nor a pcap file is specified,</span>
+<span class="sd">        pysand will attempt to capture from the default network interface.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        :param function detect_callback_tcp: Callback function for new stream detection</span>
+<span class="sd">        :param function id_callback_tcp: Callback function for stream identification</span>
+<span class="sd">        :param function end_callback_tcp: Callback function for stream closing</span>
+<span class="sd">        :param string identifier_dir: Directory to load identifier files from</span>
+<span class="sd">        :param string pcap_file: Path to pcap file from which to read traffic</span>
+<span class="sd">        :param string pcap_interface: Interface from which to sniff packets</span>
+<span class="sd">        :param string notroot: Non-root user to switch to during execution</span>
+<span class="sd">        :param boolean debug_mode: Whether to print debugging messages</span>
+<span class="sd">        :param boolean print_results: Whether to print result information after execution.</span>
+<span class="sd">        :param boolean go: Whether to run immediately after initialization.</span>
+<span class="sd">        :param int pcap_timeout: The pcap read timeout, whose support is platform dependent.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c"># Instance variables for configuration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="o">=</span><span class="n">debug_mode</span>        
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_when_possible</span><span class="o">=</span><span class="bp">False</span> <span class="c">#TODO: make useful or merge w/ go</span>
+
+
+        <span class="c"># Load all the identifiers from the specified directory.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;Loading identifiers from&#39;</span><span class="p">,</span> <span class="n">identifier_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_idents</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">load_idents</span><span class="p">(</span><span class="n">identifier_dir</span><span class="p">)</span>
+        
+        <span class="c"># Storage init</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">next_index</span><span class="o">=</span><span class="mf">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index_table</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+        
+        <span class="c"># Set up libnids</span>
+        <span class="n">nids</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="s">&quot;scan_num_hosts&quot;</span><span class="p">,</span> <span class="mf">0</span><span class="p">)</span>  <span class="c"># Disable portscan detection.</span>
+        <span class="k">if</span> <span class="n">pcap_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">nids</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="s">&quot;filename&quot;</span><span class="p">,</span> <span class="n">pcap_file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pcap_interface</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">nids</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="s">&quot;device&quot;</span><span class="p">,</span> <span class="n">pcap_interface</span><span class="p">)</span>
+        <span class="n">nids</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="s">&quot;pcap_filter&quot;</span><span class="p">,</span> <span class="s">&quot;tcp&quot;</span><span class="p">)</span> <span class="c"># Only capture TCP traffic for now.</span>
+        <span class="n">nids</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="s">&quot;pcap_timeout&quot;</span><span class="p">,</span><span class="n">pcap_timeout</span><span class="p">)</span>
+        <span class="n">nids</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+        <span class="n">nids</span><span class="o">.</span><span class="n">register_tcp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handleTcpStream</span><span class="p">)</span>
+        
+        
+        <span class="c"># SAND Callback functions init</span>
+        <span class="c"># Read these instance variables like a sort of mixed Hungarian notation:</span>
+        <span class="c"># function_callback_new, identify, end_for tcp protocol</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f_cb_new_tcp</span> <span class="o">=</span> <span class="n">detect_callback_tcp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f_cb_id_tcp</span> <span class="o">=</span> <span class="n">id_callback_tcp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f_cb_end_tcp</span> <span class="o">=</span> <span class="n">end_callback_tcp</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;Callbacks registered&quot;</span>
+
+        <span class="c"># Drop to run as a user</span>
+        <span class="k">if</span> <span class="n">notroot</span> <span class="ow">is</span> <span class="ow">not</span> <span class="s">&quot;root&quot;</span><span class="p">:</span>
+            <span class="p">(</span><span class="n">uid</span><span class="p">,</span> <span class="n">gid</span><span class="p">)</span> <span class="o">=</span> <span class="n">pwd</span><span class="o">.</span><span class="n">getpwnam</span><span class="p">(</span><span class="n">notroot</span><span class="p">)[</span><span class="mf">2</span><span class="p">:</span><span class="mf">4</span><span class="p">]</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">setgroups</span><span class="p">([</span><span class="n">gid</span><span class="p">,])</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">setgid</span><span class="p">(</span><span class="n">gid</span><span class="p">)</span> <span class="c">#</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">setuid</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span>
+            <span class="k">if</span> <span class="mf">0</span> <span class="ow">in</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">getuid</span><span class="p">(),</span> <span class="n">os</span><span class="o">.</span><span class="n">getgid</span><span class="p">()]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getgroups</span><span class="p">()):</span>
+                <span class="k">print</span> <span class="s">&quot;Supply better username, please!&quot;</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mf">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&#39;Pysand is running as root. This may not be advised.&#39;</span>
+        
+        <span class="c"># Output our PID. Just in case we have to kill us.</span>
+        <span class="c"># TODO: libraries shouldn&#39;t print.</span>
+        <span class="k">print</span> <span class="s">&quot;pysand pid: [&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span><span class="s">&#39;]&#39;</span>
+    
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="c"># Loop forever (network device), or until EOF (pcap file)</span>
+        <span class="c"># Note that an exception in the callback will break the loop!</span>
+        <span class="c"># TODO: currently no way to undo &quot;go&quot;.</span>
+        <span class="k">if</span> <span class="n">go</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;going&#39;</span>
+                <span class="n">i</span><span class="o">=</span><span class="mf">1</span>
+                <span class="k">while</span> <span class="n">i</span><span class="o">&gt;</span><span class="mf">0</span><span class="p">:</span>
+                    <span class="n">i</span><span class="o">=</span><span class="n">nids</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">nids</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s">&quot;nids/pcap error:&quot;</span><span class="p">,</span> <span class="n">e</span>
+            <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s">&#39;Interrupted by user.&#39;</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">print</span> <span class="s">&quot;misc. exception (runtime error in user callback?):&quot;</span>
+                <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">end_time</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span> <span class="ow">or</span> <span class="n">print_results</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">index</span><span class="p">,</span><span class="n">strm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_table</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                        <span class="k">print</span> <span class="s">&quot;State of stream&quot;</span><span class="p">,</span> <span class="n">strm</span><span class="p">[</span><span class="mf">2</span><span class="p">],</span> <span class="s">&quot;,&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">strm</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">addr</span><span class="p">),</span> <span class="s">&quot;:&quot;</span><span class="p">,</span> <span class="n">strm</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">nids_state</span><span class="p">,</span><span class="s">&quot;:&quot;</span><span class="p">,</span><span class="n">strm</span><span class="p">[</span><span class="mf">3</span><span class="p">]</span>
+                    <span class="n">run_time</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">end_time</span><span class="o">-</span><span class="n">start_time</span><span class="p">)</span>
+                    <span class="k">print</span> <span class="s">&#39;Took&#39;</span><span class="p">,</span><span class="n">run_time</span>
+    
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;Dispatching&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">nids</span><span class="o">.</span><span class="n">dispatch</span><span class="p">(</span><span class="o">-</span><span class="mf">1</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">nids</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&quot;nids/pcap error:&quot;</span><span class="p">,</span> <span class="n">e</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&#39;Interrupted by user.&#39;</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&quot;misc. exception (runtime error in user callback?):&quot;</span><span class="p">,</span> <span class="n">e</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;Done dispatching.&#39;</span>
+    
+<div class="viewcode-block" id="sand.load_idents"><a class="viewcode-back" href="../index.html#pysand.sand.load_idents">[docs]</a>    <span class="k">def</span> <span class="nf">load_idents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ident_dir</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Load into memory all of the protocol identifiers from ident_dir.&quot;&quot;&quot;</span>
+        <span class="n">identifiers</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="nb">file</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">ident_dir</span><span class="p">):</span> <span class="c"># For every file in ident_dir</span>
+            <span class="n">new_identifier</span> <span class="o">=</span> <span class="n">load_ident</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ident_dir</span><span class="p">,</span><span class="nb">file</span><span class="p">))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;Loading identifier: &#39;</span><span class="p">,</span> <span class="n">load_ident</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ident_dir</span><span class="p">,</span><span class="nb">file</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">new_identifier</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">identifiers</span><span class="o">+=</span><span class="p">[</span><span class="n">new_identifier</span><span class="p">]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;Added&quot;</span><span class="p">,</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ident_dir</span><span class="p">,</span><span class="nb">file</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">identifiers</span>
+</div>
+    <span class="k">def</span> <span class="nf">cease</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># TODO: make this do something</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_when_possible</span><span class="o">=</span><span class="bp">True</span>
+        <span class="nb">exit</span><span class="p">()</span>
+
+<div class="viewcode-block" id="sand.handleTcpStream"><a class="viewcode-back" href="../index.html#pysand.sand.handleTcpStream">[docs]</a>    <span class="k">def</span> <span class="nf">handleTcpStream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tcp_stream</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Callback function called by libnids when it receives a new packet.&quot;&quot;&quot;</span>
+        <span class="n">stream_id</span><span class="o">=</span><span class="n">tcp_stream</span><span class="o">.</span><span class="n">addr</span>
+        
+
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;Handling a TCP stream.&quot;</span><span class="p">,</span> <span class="s">&quot;Time: &quot;</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="s">&quot; &quot;</span><span class="p">,</span><span class="n">stream_id</span>
+        
+        <span class="k">if</span> <span class="n">tcp_stream</span><span class="o">.</span><span class="n">nids_state</span> <span class="o">==</span> <span class="n">nids</span><span class="o">.</span><span class="n">NIDS_JUST_EST</span><span class="p">:</span> <span class="c"># New connection/stream</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;New stream.&quot;</span><span class="p">,</span> <span class="n">stream_id</span>
+            <span class="c">#self.stream_list = self.stream_list+[tcp_stream]</span>
+            <span class="n">tcp_stream</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">collect</span><span class="o">=</span><span class="mf">1</span> <span class="c"># Signal to collect this data</span>
+            <span class="n">tcp_stream</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">collect</span><span class="o">=</span><span class="mf">1</span>
+            
+            <span class="c"># Store our own metadata -- twice.</span>
+            <span class="n">new_ct</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">certainty_table</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all_idents</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">index_table</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">next_index</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="n">tcp_stream</span><span class="p">,</span><span class="n">new_ct</span><span class="p">,</span><span class="n">stream_id</span><span class="p">,</span><span class="s">&#39;unknown&#39;</span><span class="p">)</span> <span class="c">#TODO: These tuples should probably be the same.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">next_index</span><span class="p">,</span><span class="n">new_ct</span><span class="p">,</span><span class="n">tcp_stream</span><span class="p">,</span><span class="s">&#39;unknown&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">next_index</span><span class="o">+=</span><span class="mf">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">identifyStream</span><span class="p">(</span><span class="n">stream_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">f_cb_new_tcp</span><span class="p">(</span><span class="n">tcp_stream</span><span class="p">)</span> <span class="c">#Call back.</span>
+        <span class="k">elif</span> <span class="n">tcp_stream</span><span class="o">.</span><span class="n">nids_state</span> <span class="o">==</span> <span class="n">nids</span><span class="o">.</span><span class="n">NIDS_DATA</span><span class="p">:</span> <span class="c"># Established connection receiving new data</span>
+            <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">][</span><span class="mf">0</span><span class="p">]</span>
+            <span class="n">ct</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_table</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="mf">1</span><span class="p">]</span>
+            <span class="n">proto</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index_table</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="mf">3</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">proto</span> <span class="ow">is</span> <span class="s">&#39;unknown&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">identifyStream</span><span class="p">(</span><span class="n">stream_id</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">tcp_stream</span><span class="o">.</span><span class="n">nids_state</span> <span class="ow">in</span> <span class="n">end_states</span><span class="p">:</span> <span class="c">#TODO: This doesn&#39;t seem to work. Except sometimes.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">f_cb_end_tcp</span><span class="p">(</span><span class="n">tcp_stream</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">identifyStream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream_id</span><span class="p">):</span>
+        <span class="n">id_ret</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">searchStream</span><span class="p">(</span><span class="n">stream_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">id_ret</span><span class="p">:</span>
+            <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">][</span><span class="mf">0</span><span class="p">]</span>
+            <span class="n">tcp_stream</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">][</span><span class="mf">2</span><span class="p">]</span>
+            <span class="n">ct</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">][</span><span class="mf">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="n">index</span><span class="p">,</span><span class="n">ct</span><span class="p">,</span><span class="n">tcp_stream</span><span class="p">,</span><span class="n">id_ret</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">index_table</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="n">tcp_stream</span><span class="p">,</span><span class="n">ct</span><span class="p">,</span><span class="n">stream_id</span><span class="p">,</span><span class="n">id_ret</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">f_cb_id_tcp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">][</span><span class="mf">2</span><span class="p">],</span> <span class="n">id_ret</span><span class="p">)</span>
+            
+
+        <span class="k">pass</span>
+        
+    <span class="k">def</span> <span class="nf">searchStream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">stream_id</span><span class="p">):</span>
+        <span class="n">tcp_stream</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">][</span><span class="mf">2</span><span class="p">]</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="c"># There&#39;s a lot going on in the following lines that is, at first, unintuitive.</span>
+        <span class="c"># First of all, due to weirdness somewhere in libnids (I&#39;m quite sure it&#39;s not</span>
+        <span class="c"># in the pysand code), their representation of the client does not jibe with</span>
+        <span class="c"># our representation of a client. Somewhere in the pysand code, therefore,</span>
+        <span class="c"># they need to be swapped. This is where that happens, and only here (I hope).</span>
+        <span class="c"># Secondly, the data that libnids stores is held in a (by default) 4096-byte buffer;</span>
+        <span class="c"># the pynids wrapper gives me direct access to this, so if I ask Python for</span>
+        <span class="c"># the length of the data that I&#39;ve gotten so far, it will always tell me</span>
+        <span class="c"># 4096. The problem is that if I have less than 4096 bytes of data from a single</span>
+        <span class="c"># half-stream, unpredictable behavior results. So let&#39;s make sure we&#39;re only</span>
+        <span class="c"># going to search the correct substring.</span>
+        <span class="c"># Whew! --George</span>
+        <span class="n">data</span><span class="p">[</span><span class="s">&#39;c&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tcp_stream</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">data</span><span class="p">[:</span><span class="n">tcp_stream</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">count</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s">&#39;s&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tcp_stream</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">data</span><span class="p">[:</span><span class="n">tcp_stream</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">count</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;Length of &quot;</span><span class="p">,</span> <span class="n">stream_id</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&#39;c&#39;</span><span class="p">])),</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s">&#39;s&#39;</span><span class="p">]))</span>
+        <span class="k">for</span> <span class="n">cert_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">][</span><span class="mf">1</span><span class="p">]:</span> <span class="c"># For each protocol node in a certainty table</span>
+            <span class="n">cert_node</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stream_table</span><span class="p">[</span><span class="n">stream_id</span><span class="p">][</span><span class="mf">1</span><span class="p">][</span><span class="n">cert_index</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">half_stream</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;s&#39;</span><span class="p">,</span><span class="s">&#39;c&#39;</span><span class="p">):</span>   <span class="c"># For each TCP half-stream</span>
+                <span class="n">search_term</span><span class="o">=</span><span class="bp">None</span>
+                <span class="k">while</span> <span class="n">search_term</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">cert_node</span><span class="o">.</span><span class="n">next_search</span><span class="p">(</span><span class="n">half_stream</span><span class="p">):</span>
+                    <span class="n">search_term</span><span class="o">=</span><span class="n">cert_node</span><span class="o">.</span><span class="n">next_search</span><span class="p">(</span><span class="n">half_stream</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;Search Term: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">search_term</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">search_term</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span> <span class="c"># None =&gt; no more client sigs to find.</span>
+                        <span class="n">found_loc</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">half_stream</span><span class="p">])</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">cert_node</span><span class="o">.</span><span class="n">next_search</span><span class="p">(</span><span class="n">half_stream</span><span class="p">)[</span><span class="mf">0</span><span class="p">])</span> <span class="c">#, cert_node.curs[half_stream])</span>
+                        <span class="c"># TODO: this debug line is very, very, very verbose.</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;Searching for&quot;</span><span class="p">,</span><span class="n">cert_node</span><span class="o">.</span><span class="n">next_search</span><span class="p">(</span><span class="n">half_stream</span><span class="p">)[</span><span class="mf">0</span><span class="p">],</span> <span class="s">&quot;in&quot;</span><span class="p">,</span><span class="n">half_stream</span><span class="p">,</span><span class="s">&quot;in&quot;</span><span class="p">,</span><span class="n">stream_id</span>
+                        <span class="k">if</span> <span class="n">found_loc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="o">-</span><span class="mf">1</span><span class="p">:</span>
+                            <span class="n">cert_node</span><span class="o">.</span><span class="n">certainty</span><span class="o">+=</span><span class="mf">1</span>
+                            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;I found&quot;</span><span class="p">,</span><span class="n">cert_node</span><span class="o">.</span><span class="n">next_search</span><span class="p">(</span><span class="n">half_stream</span><span class="p">)[</span><span class="mf">0</span><span class="p">],</span><span class="s">&quot;-- Certainty of ID is &quot;</span><span class="p">,</span> <span class="n">cert_node</span><span class="o">.</span><span class="n">certainty</span><span class="p">,</span> <span class="s">&quot; / &quot;</span><span class="p">,</span> <span class="n">cert_node</span><span class="o">.</span><span class="n">ident</span><span class="o">.</span><span class="n">threshold</span>
+                            <span class="c"># TODO: I think I may have been debugging something here -George</span>
+                            <span class="n">cert_node</span><span class="o">.</span><span class="n">next</span><span class="p">[</span><span class="n">half_stream</span><span class="p">]</span><span class="o">+=</span><span class="mf">1</span>
+                            <span class="k">if</span> <span class="n">cert_node</span><span class="o">.</span><span class="n">certainty</span> <span class="o">==</span> <span class="n">cert_node</span><span class="o">.</span><span class="n">ident</span><span class="o">.</span><span class="n">threshold</span><span class="p">:</span>
+                                <span class="n">tcp_stream</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">collect</span> <span class="o">=</span> <span class="mf">0</span>
+                                <span class="n">tcp_stream</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">collect</span> <span class="o">=</span> <span class="mf">0</span>
+                                <span class="k">return</span> <span class="n">cert_node</span><span class="o">.</span><span class="n">ident</span><span class="o">.</span><span class="n">proto_name</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">pass</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span> <span class="k">print</span> <span class="s">&quot;No more sigs to find.&quot;</span>
+        <span class="k">return</span> <span class="bp">False</span>
+                    
+    
+    <span class="k">def</span> <span class="nf">certainty_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">identifiers</span><span class="p">):</span>
+        <span class="n">ct</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">identifiers</span><span class="p">:</span>
+            <span class="n">ct</span><span class="p">[</span><span class="n">i</span><span class="o">.</span><span class="n">proto_name</span><span class="p">]</span><span class="o">=</span><span class="n">certainty_node</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ct</span>
+</div>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">interface</span><span class="p">,</span><span class="n">pcapfile</span><span class="p">,</span><span class="n">identdir</span><span class="p">,</span> <span class="n">debug</span><span class="p">,</span> <span class="n">results</span><span class="p">,</span> <span class="n">nr</span><span class="p">):</span>
+    <span class="n">libsand</span> <span class="o">=</span> <span class="n">sand</span><span class="p">(</span><span class="n">newStream</span><span class="p">,</span><span class="n">idStream</span><span class="p">,</span><span class="n">endStream</span><span class="p">,</span><span class="n">identdir</span><span class="p">,</span><span class="n">pcapfile</span><span class="p">,</span><span class="n">interface</span><span class="p">,</span> <span class="n">debug_mode</span><span class="o">=</span><span class="n">debug</span><span class="p">,</span> <span class="n">print_results</span><span class="o">=</span><span class="n">results</span><span class="p">,</span> <span class="n">notroot</span><span class="o">=</span><span class="n">nr</span><span class="p">)</span>
+    <span class="k">pass</span>
+
+<span class="k">def</span> <span class="nf">newStream</span><span class="p">(</span><span class="n">tcp_stream</span><span class="p">):</span>
+    <span class="k">pass</span>
+    <span class="k">print</span> <span class="s">&quot;New stream opened: &quot;</span><span class="p">,</span> <span class="n">tcp_stream</span><span class="o">.</span><span class="n">addr</span>
+
+<span class="k">def</span> <span class="nf">idStream</span><span class="p">(</span><span class="n">tcp_stream</span><span class="p">,</span> <span class="n">proto_name</span><span class="p">):</span>
+    <span class="k">pass</span>
+    <span class="k">print</span> <span class="s">&quot;Identification made:&quot;</span><span class="p">,</span> <span class="n">tcp_stream</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="s">&quot;is&quot;</span><span class="p">,</span> <span class="n">proto_name</span>
+
+<span class="k">def</span> <span class="nf">endStream</span><span class="p">(</span><span class="n">tcp_stream</span><span class="p">):</span>
+    <span class="k">pass</span>
+    <span class="k">print</span> <span class="s">&quot;Stream closed: &quot;</span><span class="p">,</span> <span class="n">tcp_stream</span><span class="o">.</span><span class="n">addr</span>
+
+<span class="k">def</span> <span class="nf">usage</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s">&#39;sudo python pysand.py -s identdir {-i interface | -p pcapfile} [-u username] [-vr]&#39;</span>
+    <span class="k">print</span> <span class="s">&#39;v: verbose&#39;</span>
+    <span class="k">print</span> <span class="s">&#39;r: results&#39;</span>
+    <span class="k">print</span> <span class="s">&#39;u: user to run as&#39;</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">interface</span><span class="o">=</span><span class="bp">None</span>
+    <span class="n">pcapfile</span><span class="o">=</span><span class="bp">None</span>
+    <span class="n">identdir</span><span class="o">=</span><span class="bp">None</span>
+    <span class="n">debug</span><span class="o">=</span><span class="bp">False</span>
+    <span class="n">results</span><span class="o">=</span><span class="bp">False</span>
+    <span class="n">user</span><span class="o">=</span><span class="s">&#39;root&#39;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">opts</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="n">getopt</span><span class="o">.</span><span class="n">getopt</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mf">1</span><span class="p">:],</span> <span class="s">&quot;hp:i:s:vru:&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">getopt</span><span class="o">.</span><span class="n">GetoptError</span><span class="p">,</span> <span class="n">err</span><span class="p">:</span>
+        <span class="c"># print help information and exit:</span>
+        <span class="k">print</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span> <span class="c"># will print something like &quot;option -a not recognized&quot;</span>
+        <span class="n">usage</span><span class="p">()</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mf">2</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">opts</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">o</span> <span class="o">==</span> <span class="s">&quot;-p&quot;</span><span class="p">:</span>
+            <span class="n">pcapfile</span><span class="o">=</span><span class="n">a</span>
+        <span class="k">elif</span> <span class="n">o</span> <span class="o">==</span> <span class="s">&quot;-s&quot;</span><span class="p">:</span>
+            <span class="n">identdir</span><span class="o">=</span><span class="n">a</span>
+        <span class="k">elif</span> <span class="n">o</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;-h&quot;</span><span class="p">,</span> <span class="s">&quot;--help&quot;</span><span class="p">):</span>
+            <span class="n">usage</span><span class="p">()</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">o</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;-i&quot;</span><span class="p">):</span>
+            <span class="n">interface</span><span class="o">=</span><span class="n">a</span>
+        <span class="k">elif</span> <span class="n">o</span> <span class="o">==</span> <span class="s">&#39;-v&#39;</span><span class="p">:</span>
+            <span class="n">debug</span><span class="o">=</span><span class="bp">True</span>
+        <span class="k">elif</span> <span class="n">o</span> <span class="o">==</span> <span class="s">&#39;-r&#39;</span><span class="p">:</span>
+            <span class="n">results</span><span class="o">=</span><span class="bp">True</span>
+        <span class="k">elif</span> <span class="n">o</span> <span class="o">==</span> <span class="s">&#39;-u&#39;</span><span class="p">:</span>
+            <span class="n">user</span><span class="o">=</span><span class="n">a</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">usage</span><span class="p">()</span>
+            <span class="nb">exit</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">pcapfile</span><span class="o">==</span><span class="bp">None</span> <span class="ow">and</span> <span class="n">interface</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">usage</span><span class="p">()</span>
+        <span class="nb">exit</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">pcapfile</span><span class="o">!=</span><span class="bp">None</span> <span class="ow">and</span> <span class="n">interface</span><span class="o">!=</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">usage</span><span class="p">()</span>
+        <span class="nb">exit</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">identdir</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+        <span class="n">usage</span><span class="p">()</span>
+        <span class="nb">exit</span><span class="p">()</span>        
+    <span class="n">main</span><span class="p">(</span><span class="n">interface</span><span class="p">,</span><span class="n">pcapfile</span><span class="p">,</span><span class="n">identdir</span><span class="p">,</span> <span class="n">debug</span><span class="p">,</span> <span class="n">results</span><span class="p">,</span> <span class="n">user</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Pysand v0.1dev documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, George Louthan.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

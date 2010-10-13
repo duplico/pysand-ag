@@ -1,0 +1,198 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Welcome to Pysand’s documentation! &mdash; Pysand v0.1dev documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Pysand v0.1dev documentation" href="#" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="#">Pysand v0.1dev documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="welcome-to-pysand-s-documentation">
+<h1>Welcome to Pysand&#8217;s documentation!<a class="headerlink" href="#welcome-to-pysand-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Contents:</p>
+<div class="toctree-wrapper compound">
+<ul class="simple">
+</ul>
+</div>
+<span class="target" id="module-pysand"></span><dl class="class">
+<dt id="pysand.certainty_node">
+<em class="property">class </em><tt class="descclassname">pysand.</tt><tt class="descname">certainty_node</tt><big>(</big><em>identifier</em>, <em>debug</em><big>)</big><a class="reference internal" href="_modules/pysand.html#certainty_node"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pysand.certainty_node" title="Permalink to this definition">¶</a></dt>
+<dd><p>Describes a single cell in the certainty table: matches per stream per signature.</p>
+<p>The certainty table consists of a table of certainty nodes, with each certainty
+node representing our level of certainty that a particular stream belongs to
+a particular protocol. It also contains some basic utility for selecting the
+next string to search for from a protocol identifier.</p>
+<dl class="method">
+<dt id="pysand.certainty_node.next_search">
+<tt class="descname">next_search</tt><big>(</big><em>half_stream='c'</em><big>)</big><a class="reference internal" href="_modules/pysand.html#certainty_node.next_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pysand.certainty_node.next_search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the next signature to search a half-stream for.</p>
+<p>Which half-stream&#8217;s next signature is determined by the character passed
+to the half_stream parameter, which defaults to client.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>half_stream</strong> (<em>string</em>) &#8211; the half-stream to use: &#8216;c&#8217; for client or &#8216;s&#8217; for server.</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The next signature to search for.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>:rtype tuple</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pysand.sand">
+<em class="property">class </em><tt class="descclassname">pysand.</tt><tt class="descname">sand</tt><big>(</big><em>detect_callback_tcp</em>, <em>id_callback_tcp</em>, <em>end_callback_tcp</em>, <em>identifier_dir</em>, <em>pcap_file=None</em>, <em>pcap_interface=None</em>, <em>notroot='root'</em>, <em>debug_mode=False</em>, <em>print_results=False</em>, <em>go=True</em>, <em>pcap_timeout=1024</em><big>)</big><a class="reference internal" href="_modules/pysand.html#sand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pysand.sand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main pysand class for identifying protocols in pcapfiles or from the wire.</p>
+<p>The correct way to use this class is by initializing a singleton object,
+passing it functions to be called for callback events. Other processing
+should be done in a separate analysis module. Callbacks are currently
+provided for the detection of a new stream, the identification of a stream,
+and the closure of a stream. Analysis modules should not need to use any
+class except this one.</p>
+<p>Pysand will read packets either from the wire (from a specified interface or
+the default interface) or from a specified pcap file; when a new stream is
+detected, the <em>detect</em> callback function will be called; when a stream is
+associated with a protocol, the <em>id</em> callback function will be called; and
+when a stream is disconnected, the <em>end</em> callback function will be called.</p>
+<p>Identification can begin immediately or on a delay; debuggin information can
+be enabled, in which case it will be sent to StdOut. Optionally, results of
+the detection may be printed to StdOut by pysand.</p>
+<p>Due to Python&#8217;s <a class="reference external" href="http://docs.python.org/c-api/init.html#thread-state-and-the-global-interpreter-lock">Global Interpreter Lock</a></p>
+<p>Instanciating more than one object of this class at a time will cause
+problems.</p>
+<p>Tested in Ubuntu, various versions. Do something like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># apt-get install libnet-dev libpcap-dev build-essential python-dev</span>
+<span class="c"># easy_install sphinx</span>
+<span class="c"># wget http://pilcrow.madison.wi.us/pynids/pynids-0.5.tar.gz</span>
+<span class="c"># tar -xzvf pynids-0.5.tar.gz</span>
+<span class="c"># cd pynids-0.5</span>
+</pre></div>
+</div>
+<p>You need to change the #elif on line <tt class="docutils literal"><span class="pre">408</span></tt> of libnids-1.19/src/killtcp.c to an
+<tt class="docutils literal"><span class="pre">#else</span></tt>. You may also need to run <tt class="docutils literal"><span class="pre">$</span> <span class="pre">export</span> <span class="pre">CFLAGS=$CFLAGS</span> <span class="pre">-fPIC</span></tt> Then:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># python setup.py build</span>
+<span class="c"># python setup.py install</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="pysand.sand.handleTcpStream">
+<tt class="descname">handleTcpStream</tt><big>(</big><em>tcp_stream</em><big>)</big><a class="reference internal" href="_modules/pysand.html#sand.handleTcpStream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pysand.sand.handleTcpStream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback function called by libnids when it receives a new packet.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pysand.sand.load_idents">
+<tt class="descname">load_idents</tt><big>(</big><em>ident_dir</em><big>)</big><a class="reference internal" href="_modules/pysand.html#sand.load_idents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pysand.sand.load_idents" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load into memory all of the protocol identifiers from ident_dir.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to Pysand&#8217;s documentation!</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="#">Pysand v0.1dev documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010, George Louthan.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>
