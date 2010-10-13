@@ -12,8 +12,6 @@ import MySQLdb
 
 end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
 
-#DEBUG=False
-
 class certainty_node: # One per protocol per stream
     
     """Describes a single cell in the certainty table: matches per stream per signature.
