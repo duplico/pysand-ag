@@ -4,6 +4,8 @@ import os, ConfigParser
 from pysand import *
 
 class gen_ident:
+    """Class defining pysand's representation of a protocol identifier.
+    """
     def __init__(self, proto_name, client_signature_list, server_signature_list, threshold):
         self.proto_name=proto_name
         #client_signature_list
@@ -15,6 +17,11 @@ class gen_ident:
         return "GEN_IDENT:"+str(self.proto_name)+str(self.s_sigs)+str(self.c_sigs)+str(self.threshold)
 
 def load_ident(filename):
+    """Build a generic identifier object from an identifier file.
+    
+    :param string filename: path to the identifier file to load
+    :returns: a gen_ident representation of the file
+    """
     config = ConfigParser.ConfigParser()
     config.read([filename])
     all_sections=config.sections()
@@ -45,12 +52,19 @@ def load_ident(filename):
     # Get client signatures
     client_list=[]
     for i in range(num_client):
-        client_list+=[(config.get('client'+str(i),'start').strip('"').decode('string_escape'),config.get('client'+str(i),'sig').strip('"'),config.get('client'+str(i),'finish').strip('"').decode('string_escape'))]
+        client_list+=[(config.get('client'+str(i),'start').strip('"').decode('string_escape'),
+                       config.get('client'+str(i),'sig').strip('"'),
+                       config.get('client'+str(i),'finish').strip('"').decode('string_escape'))]
     
     # Get server signatures
     server_list=[]
     for i in range(num_server):
-        server_list+=[(config.get('server'+str(i),'start').strip('"').decode('string_escape'),config.get('server'+str(i),'sig').strip('"'),config.get('server'+str(i),'finish').strip('"').decode('string_escape'))]
+        server_list+=[(config.get('server'+str(i),'start').strip('"').decode('string_escape'),
+                       config.get('server'+str(i),'sig').strip('"'),
+                       config.get('server'+str(i),'finish').strip('"').decode('string_escape'))]
     
     # Generate the new identifier and return it    
-    return gen_ident(config.get('identifier','protocol').strip('"'),client_list,server_list,config.getint('identifier','threshold'))
+    return gen_ident(config.get('identifier','protocol').strip('"'),
+                     client_list,
+                     server_list,
+                     config.getint('identifier','threshold'))
