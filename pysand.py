@@ -15,9 +15,14 @@ end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
 #DEBUG=False
 
 class certainty_node: # One per protocol per stream
-    """A certainty node describes a single node in the certainty table;
-    there should exist a single certainty node per protocol per stream.
-    It handles tracking our certainty about its identification."""
+    
+    """Describes a single cell in the certainty table: matches per stream per signature.
+    
+    The certainty table consists of a table of certainty nodes, with each certainty
+    node representing our level of certainty that a particular stream belongs to
+    a particular protocol. It also contains some basic utility for selecting the
+    next string to search for from a protocol identifier."""
+    
     def __init__(self, identifier, debug):
         """Construct a new certainty node based on an identifier object."""
         self.ident=identifier
@@ -27,16 +32,18 @@ class certainty_node: # One per protocol per stream
         self.debug=debug
     
     def next_search(self,half_stream='c'):
-        """Returns the next string to search the half-stream for, depending
-        upon the character that is passed as the half_stream parameter.
-        Returns None if there are no more signatures to find in the half-stream.
-        c->client half-stream (default)
-        s->server half-stream"""
+        """Return the next string to search a half-stream for.
         
-        # Enforce default behavior. I hope this never happens.
-        if half_stream not in ('c','s'):
-            half_stream='c'
-            if self.debug: print "Forcing client search. Fix your coding, stupid."
+        Which half-stream's next signature is determined by the character passed
+        to the half_stream parameter, which defaults to client.
+        
+        :param string half_stream: the half-stream to use: 'c' for client or 's'
+        for server.
+        
+        :returns: The next string to search for.
+        :rtype string"""
+        
+        assert(half_stream in ('c','s'))
         
         # Select the proper set of signatures
         if half_stream=='c':
@@ -69,9 +76,9 @@ class sand:
         
         self.stop_when_possible=False
 
-	self.time = ""
-	self.srcIP = ""
-	self.destIP = ""        
+        self.time = ""
+        self.srcIP = ""
+        self.destIP = ""        
 
         if pcap_file == 'None':
             pcap_file=None
@@ -134,7 +141,7 @@ class sand:
                 print 'going'
                 i=1
                 while i>0:
-		    #i=nids.next()
+                    #i=nids.next()
                     nids.next()
             except nids.error, e:
                 print "nids/pcap error:", e
@@ -178,15 +185,15 @@ class sand:
         exit()
 
     def handleTcpStream(self, tcp_stream):
-	"""Callback function called by libnids when it receives a new packet."""
+        """Callback function called by libnids when it receives a new packet."""
         stream_id=tcp_stream.addr
-	
-	#Time is the timestamp at which the stream occured
-	self.time = datetime.datetime.now()
         
-	if self.debug: print "Handling a TCP stream.", "Time: ", time, " ",stream_id
+        #Time is the timestamp at which the stream occured
+        self.time = datetime.datetime.now()
         
-	if tcp_stream.nids_state == nids.NIDS_JUST_EST: # New connection/stream
+        if self.debug: print "Handling a TCP stream.", "Time: ", time, " ",stream_id
+        
+        if tcp_stream.nids_state == nids.NIDS_JUST_EST: # New connection/stream
             if self.debug: print "New stream.", stream_id
             #self.stream_list = self.stream_list+[tcp_stream]
             tcp_stream.client.collect=1 # Signal to collect this data
@@ -218,33 +225,33 @@ class sand:
             self.stream_table[stream_id]=(index,ct,tcp_stream,id_ret)
             self.index_table[index]=(tcp_stream,ct,stream_id,id_ret)
             self.f_cb_id_tcp(self.stream_table[stream_id][2], id_ret)
-	    
-	    #Store in Database
-	    dbb = MySQLdb.connect(host="localhost", user="raven", passwd="ravenpass", db="RAVENDB")
+            
+            #Store in Database
+            dbb = MySQLdb.connect(host="localhost", user="raven", passwd="ravenpass", db="RAVENDB")
 
-	    #Need to make dbb a global and make a connection when pysand is first run
-	    #This will make a new connection to the DB everytime a valid stream is found
-	    #Need to find the protocol the stream was sent over. 
-	    #A stream (stream_id) takes the form of: (('SRC IP', Port), ('Dest IP', Port))
-	    #The following removes misc. stuff from the tuple and puts it in a stringl
-	    self.srcIP = "" + str(stream_id[0])
-	    self.destIP = "" + str(stream_id[1])
-	    self.srcIP = (self.srcIP.strip('()')).split(',')
-	    self.srcIP = self.srcIP[0].strip("'")
-	    self.destIP = (self.destIP.strip('()')).split(',')
-	    self.destIP = self.destIP[0].strip("'")
-	    self.time = str(self.time)
-	    print "SourceIP: " + str(len(self.srcIP)) + "DestIP: " + str(len(self.destIP)) + "Time: " + str(len(self.time))
-	
-	    c = dbb.cursor()
-	    sql = "INSERT INTO streams (SrcIP, DestIP, TimeStamp) VALUES (%s, %s, %s)"
-	    try:
-		c.execute(sql, (self.srcIP, self.destIP, self.time))
-		dbb.commit()
-	    except MySQLdb.Error, e:
-		dbb.rollback()
-		print "Error: %d: %s:" % (e.args[0], e.args[1])
-	    #End Database access
+            #Need to make dbb a global and make a connection when pysand is first run
+            #This will make a new connection to the DB everytime a valid stream is found
+            #Need to find the protocol the stream was sent over. 
+            #A stream (stream_id) takes the form of: (('SRC IP', Port), ('Dest IP', Port))
+            #The following removes misc. stuff from the tuple and puts it in a stringl
+            self.srcIP = "" + str(stream_id[0])
+            self.destIP = "" + str(stream_id[1])
+            self.srcIP = (self.srcIP.strip('()')).split(',')
+            self.srcIP = self.srcIP[0].strip("'")
+            self.destIP = (self.destIP.strip('()')).split(',')
+            self.destIP = self.destIP[0].strip("'")
+            self.time = str(self.time)
+            print "SourceIP: " + str(len(self.srcIP)) + "DestIP: " + str(len(self.destIP)) + "Time: " + str(len(self.time))
+        
+            c = dbb.cursor()
+            sql = "INSERT INTO streams (SrcIP, DestIP, TimeStamp) VALUES (%s, %s, %s)"
+            try:
+                c.execute(sql, (self.srcIP, self.destIP, self.time))
+                dbb.commit()
+            except MySQLdb.Error, e:
+                dbb.rollback()
+                print "Error: %d: %s:" % (e.args[0], e.args[1])
+            #End Database access
         pass
         
     def searchStream(self,stream_id):
@@ -271,23 +278,23 @@ class sand:
                 search_term=None
                 while search_term is not cert_node.next_search(half_stream):
                     search_term=cert_node.next_search(half_stream)
-		    print "Search Term: " + str(search_term)
+                    print "Search Term: " + str(search_term)
                     if search_term is not None: # None => no more client sigs to find.
                         found_loc = str(data[half_stream]).find(cert_node.next_search(half_stream)[0]) #, cert_node.curs[half_stream])
-			#print "DATA!!!!: " + str(data[half_stream])
-			#print "--------------------------------------------"
-			#print "DATA [0]: " + str(data[half_stream])
+                        #print "DATA!!!!: " + str(data[half_stream])
+                        #print "--------------------------------------------"
+                        #print "DATA [0]: " + str(data[half_stream])
                         #if self.debug: print "Searching for",cert_node.next_search(half_stream)[0], "in",half_stream,"in",stream_id
                         if found_loc is not -1:
                             cert_node.certainty+=1
                             if self.debug: print "I found",cert_node.next_search(half_stream)[0],"-- Certainty of ID is ", cert_node.certainty, " / ", cert_node.ident.threshold
                             #print "Protocol?: "
-			    #print cert_node.next_search(half_stream)[0], "in\n",str(data[half_stream])
+                            #print cert_node.next_search(half_stream)[0], "in\n",str(data[half_stream])
                             cert_node.next[half_stream]+=1
                             if cert_node.certainty == cert_node.ident.threshold:
                                 tcp_stream.client.collect = 0
                                 tcp_stream.server.collect = 0
-				print "yaya " + str(cert_node.ident.proto_name)
+                                print "yaya " + str(cert_node.ident.proto_name)
                                 return cert_node.ident.proto_name
                         else:
                             pass
