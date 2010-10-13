@@ -17,10 +17,14 @@ class certainty_node: # One per protocol per stream
     The certainty table consists of a table of certainty nodes, with each certainty
     node representing our level of certainty that a particular stream belongs to
     a particular protocol. It also contains some basic utility for selecting the
-    next string to search for from a protocol identifier."""
+    next string to search for from a protocol identifier.
+    
+    """
     
     def __init__(self, identifier, debug):
-        """Construct a new certainty node based on an identifier object."""
+        """Construct a new certainty node based on an identifier object.
+        
+        """
         self.ident=identifier
         self.next={'c': 0, 's': 0}
         self.curs={'c': 0, 's': 0}
@@ -33,8 +37,7 @@ class certainty_node: # One per protocol per stream
         Which half-stream's next signature is determined by the character passed
         to the half_stream parameter, which defaults to client.
         
-        :param string half_stream: the half-stream to use: 'c' for client or 's'
-        for server.
+        :param string half_stream: the half-stream to use: 'c' for client or 's' for server.
         
         :returns: The next signature to search for.
         :rtype tuple
