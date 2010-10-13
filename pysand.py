@@ -197,8 +197,8 @@ class sand:
                 if self.debug or print_results:
                     for index,strm in self.index_table.iteritems():
                         print "State of stream", strm[2], ",", str(strm[0].addr), ":", strm[0].nids_state,":",strm[3]
-                        run_time=str(end_time-start_time)
-                        print 'Took',run_time
+                    run_time=str(end_time-start_time)
+                    print 'Took',run_time
     
     def step(self, *args):
         if self.debug: print 'Dispatching'
@@ -328,16 +328,15 @@ def main(interface,pcapfile,identdir, debug, results, nr):
 
 def newStream(tcp_stream):
     pass
-    #print "New stream opened: ", tcp_stream.addr
+    print "New stream opened: ", tcp_stream.addr
 
 def idStream(tcp_stream, proto_name):
     pass
-    #print "Identification made:", tcp_stream.addr, "is", proto_name
-    tcp_stream=None
+    print "Identification made:", tcp_stream.addr, "is", proto_name
 
 def endStream(tcp_stream):
     pass
-    #print "Stream closed: ", tcp_stream.addr
+    print "Stream closed: ", tcp_stream.addr
 
 def usage():
     print 'sudo python pysand.py -s identdir {-i interface | -p pcapfile} [-u username] [-vr]'
