@@ -39,8 +39,7 @@ class certainty_node: # One per protocol per stream
         
         :param string half_stream: the half-stream to use: 'c' for client or 's' for server.
         
-        :returns: The next signature to search for.
-        :rtype tuple
+        :returns tuple: The next signature to search for.
         
         """
         
@@ -86,18 +85,6 @@ class sand:
     pcap file. If neither a network interface nor a pcap file is specified,
     pysand will attempt to capture from the default network interface.
     
-    :param function detect_callback_tcp: Callback function for new stream detection
-    :param function id_callback_tcp: Callback function for stream identification
-    :param function end_callback_tcp: Callback function for stream closing
-    :param string identifier_dir: Directory to load identifier files from
-    :param string pcap_file: Path to pcap file from which to read traffic
-    :param string pcap_interface: Interface from which to sniff packets
-    :param string notroot: Non-root user to switch to during execution
-    :param boolean debug_mode: Whether to print debugging messages
-    :param boolean print_results: Whether to print result information after execution.
-    :param boolean go: Whether to run immediately after initialization.
-    :param int pcap_timeout: The pcap read timeout, whose support is platform dependent.
-    
     Due to Python's `Global Interpreter Lock <http://docs.python.org/c-api/init.html#thread-state-and-the-global-interpreter-lock>`_,
     instantiating more than one object of this class at a time will cause
     problems.
@@ -115,6 +102,18 @@ class sand:
     
     # python setup.py build
     # python setup.py install
+    
+    :param function detect_callback_tcp: Callback function for new stream detection
+    :param function id_callback_tcp: Callback function for stream identification
+    :param function end_callback_tcp: Callback function for stream closing
+    :param string identifier_dir: Directory to load identifier files from
+    :param string pcap_file: Path to pcap file from which to read traffic
+    :param string pcap_interface: Interface from which to sniff packets
+    :param string notroot: Non-root user to switch to during execution
+    :param boolean debug_mode: Whether to print debugging messages
+    :param boolean print_results: Whether to print result information after execution.
+    :param boolean go: Whether to run immediately after initialization.
+    :param int pcap_timeout: The pcap read timeout, whose support is platform dependent.
     
     """
     
