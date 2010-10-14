@@ -16,6 +16,7 @@ arrived_times = dict()
 def main(interface,pcapfile,identdir, debug, results, nr):
     # TODO: init: database_host, database_user, database_passwd, database_db
     # TODO: probably catch some exception on the connection.
+    global dbb
     dbb = MySQLdb.connect(host=database_host, user=database_user,
                           passwd=database_passwd, db=database_db)
     try:
@@ -34,8 +35,8 @@ def idStream(tcp_stream, proto_name):
     # Stream identified, so write it to the database using the timestamp from
     # when the stream was first detected.
     print "Identification made:", tcp_stream.addr, "is", proto_name
-    srcIP = tcp_stream[0][0]
-    destIP = tcp_stream[1][0]
+    srcIP = tcp_stream.addr[0][0]
+    destIP = tcp_stream.addr[1][0]
     time = arrived_times[tcp_stream]
     print "SourceIP: %s, DestIP: %s, Time: %s", (srcIP, destIP, str(time))
     
