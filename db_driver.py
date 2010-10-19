@@ -15,10 +15,17 @@ arrived_times = dict()
 
 def main(interface,pcapfile,identdir, debug, results, nr):
     # TODO: init: database_host, database_user, database_passwd, database_db
-    # TODO: probably catch some exception on the connection.
+    # catch exception on the database connection.
     global dbb
-    dbb = MySQLdb.connect(host=database_host, user=database_user,
-                          passwd=database_passwd, db=database_db)
+
+    try:
+    	dbb = MySQLdb.connect(host=database_host, user=database_user, passwd=database_passwd, db=database_db)
+    except MySQLdb.Error:
+	print "There was a problem connecting to the database. Please ensure that the database exists on the local host system and the supplied username and password are 			correct."
+	raise MySQLdb.Error
+    except MySQLdb.Warning:
+	pass
+
     try:
         libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface, debug_mode=debug, print_results=results, notroot=nr)
     finally:
