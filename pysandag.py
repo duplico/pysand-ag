@@ -31,7 +31,7 @@ def main(interface,pcapfile,identdir, debug, results, nr, mapfile, outfile):
     libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface,
                    debug_mode=debug, print_results=results, notroot=nr)
     fact_list.sort()
-    if debug or outfile:
+    if results or outfile:
         network_model = "network model =\n\tassets :\n"
         for asset in asset_list:
             network_model += "\t\t" + asset + ";\n"
@@ -39,7 +39,7 @@ def main(interface,pcapfile,identdir, debug, results, nr, mapfile, outfile):
         for fact in fact_list:
             network_model += "\t\t" + fact + ";\n"
         network_model+="."
-    if debug: print network_model
+    if results: print network_model
     if outfile:
         outfile_file = open(outfile, 'w')
         outfile_file.write(network_model)
