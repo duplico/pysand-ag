@@ -59,20 +59,27 @@ def get_topology_name(proto):
         return 'connected_network_' + proto.lower()
     # TODO: network vs. adjacent?
 
+def add_to_list(setlist, facts):
+    for fact in facts:
+        if fact not in setlist:
+            setlist.append(fact)
+
 def newStream(tcp_stream):
     global asset_list, fact_list
-    asset_list += [get_asset_name(tcp_stream.addr[0][0]),
-                   get_asset_name(tcp_stream.addr[1][0])]
-    fact_list += ["quality:" + get_asset_name(tcp_stream.addr[0][0]) + \
+
+    add_to_list(asset_list, [get_asset_name(tcp_stream.addr[0][0]),
+                   get_asset_name(tcp_stream.addr[1][0])])
+    add_to_list(fact_list, ["quality:"+get_asset_name(tcp_stream.addr[0][0])+\
         ",status" + "=up",
         "quality:" + get_asset_name(tcp_stream.addr[1][0]) + \
-        ",status" + "=up"]
+        ",status" + "=up"])
 
 def idStream(tcp_stream, proto_name):
     global fact_list
-    fact_list += ["topology:" + get_asset_name(tcp_stream.addr[0][0]) + "->" + \
+    add_to_list(fact_list,["topology:" + get_asset_name(tcp_stream.addr[0][0])\
+        + "->" + \
         get_asset_name(tcp_stream.addr[1][0]) + "," + \
-        get_topology_name(proto_name)]
+        get_topology_name(proto_name)])
 
 def endStream(tcp_stream):
     pass
