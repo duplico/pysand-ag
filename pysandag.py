@@ -97,7 +97,7 @@ if __name__ == '__main__':
     user='root'
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hp:i:s:vru:")
+        opts, args = getopt.getopt(sys.argv[1:], "hp:i:s:vru:m:o:")
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
