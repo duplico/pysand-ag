@@ -17,7 +17,7 @@ topology_mapdict = {}
 asset_list = []
 fact_list = []
 
-def main(interface,pcapfile,identdir, debug, results, nr, mapfile):
+def main(interface,pcapfile,identdir, debug, results, nr, mapfile, outfile):
     global asset_list, fact_list
     if mapfile:
         mapping_config = ConfigParser.ConfigParser()
@@ -31,14 +31,20 @@ def main(interface,pcapfile,identdir, debug, results, nr, mapfile):
     libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface,
                    debug_mode=debug, print_results=results, notroot=nr)
     fact_list.sort()
-    network_model = "network model =\n\tassets :\n"
-    for asset in asset_list:
-        network_model += "\t\t" + asset + ";\n"
-    network_model += "\tfacts :\n"
-    for fact in fact_list:
-        network_model += "\t\t" + fact + ";\n"
-    network_model+="."
-    print network_model
+    if debug or outfile:
+        network_model = "network model =\n\tassets :\n"
+        for asset in asset_list:
+            network_model += "\t\t" + asset + ";\n"
+        network_model += "\tfacts :\n"
+        for fact in fact_list:
+            network_model += "\t\t" + fact + ";\n"
+        network_model+="."
+    if debug: print network_model
+    if outfile:
+        outfile_file = open(outfile, 'w')
+        outfile_file.write(network_model)
+        outfile_file.close()
+    
 
 def get_asset_name(addr):
     if addr in asset_mapdict:
@@ -73,17 +79,19 @@ def endStream(tcp_stream):
 
 def usage():
     print 'sudo python pysand.py -s identdir [-m mapfile]\
-    {-i interface | -p pcapfile} [-u username] [-vr]'
+    {-i interface | -p pcapfile} [-u username] [-o outfile] [-vr]'
     print 'v: verbose'
     print 'r: results'
     print 'u: user to run as'
     print 'm: asset name/IP mapping file'
+    print 'o: network model output file'
 
 if __name__ == '__main__':
     interface=None
     pcapfile=None
     identdir=None
     mapfile=None
+    outfile=None
     debug=False
     results=False
     user='root'
@@ -113,6 +121,8 @@ if __name__ == '__main__':
             user=a
         elif o == '-m':
             mapfile=a
+        elif o == '-o':
+            outfile=a
         else:
             usage()
             exit()
@@ -126,4 +136,4 @@ if __name__ == '__main__':
         usage()
         exit()
     
-    main(interface,pcapfile,identdir, debug, results, user, mapfile)
+    main(interface,pcapfile,identdir, debug, results, user, mapfile, outfile)
