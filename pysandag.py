@@ -31,6 +31,7 @@ def main(interface,pcapfile,identdir, debug, results, nr, mapfile, outfile):
     libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface,
                    debug_mode=debug, print_results=results, notroot=nr)
     fact_list.sort()
+    asset_list.sort()
     if results or outfile:
         network_model = "network model =\n\tassets :\n"
         for asset in asset_list:
@@ -50,7 +51,9 @@ def get_asset_name(addr):
     if addr in asset_mapdict:
         return asset_mapdict[addr]
     else:
-        return addr.replace('.', '_')
+        addr_octets = addr.split('.')
+        addr_octets = map(lambda a: a.rjust(3,'0'), addr_octets) # 0-pad IP
+        return '_'.join(addr_octets)
 
 def get_topology_name(proto):
     if proto in topology_mapdict:
