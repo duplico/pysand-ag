@@ -38,7 +38,7 @@ def main(interface,pcapfile,identdir, debug, results, nr, mapfile, outfile):
         network_model += "\tfacts :\n"
         for fact in fact_list:
             network_model += "\t\t" + fact + ";\n"
-        network_model+="."
+        network_model+=".\n"
     if results: print network_model
     if outfile:
         outfile_file = open(outfile, 'w')
