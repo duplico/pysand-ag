@@ -185,6 +185,7 @@ class sand:
         
         # Output our PID. Just in case we have to kill us.
         # TODO: libraries shouldn't print.
+        # TODO (two years later): libraries *seriously* shouldn't print.
         print "pysand pid: [", os.getpid(),']'
     
         start_time = datetime.datetime.now()
