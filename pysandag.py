@@ -14,6 +14,9 @@ end_states = (nids.NIDS_CLOSE, nids.NIDS_TIMEOUT, nids.NIDS_RESET)
 asset_mapdict = {}
 topology_mapdict = {}
 
+asset_list = []
+fact_list = []
+
 def main(interface,pcapfile,identdir, debug, results, nr, mapfile):
     if mapfile:
         mapping_config = ConfigParser.ConfigParser()
@@ -26,6 +29,15 @@ def main(interface,pcapfile,identdir, debug, results, nr, mapfile):
                 asset_mapdict[mapping[1]] = mapping[0]
     libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface,
                    debug_mode=debug, print_results=results, notroot=nr)
+    fact_list.sort()
+    network_model = "network model =\n\tassets :\n"
+    for asset in asset_list:
+        network_model += "\t\t" + asset + ";\n"
+    network_model += "\tfacts :\n"
+    for fact in fact_list:
+        network_model += "\t\t" + fact + ";\n"
+    network_model+="."
+    print network_model
 
 def get_asset_name(addr):
     if addr in asset_mapdict:
@@ -41,13 +53,17 @@ def get_topology_name(proto):
     # TODO: network vs. adjacent?
 
 def newStream(tcp_stream):
-    print "asset: " + get_asset_name(tcp_stream.addr[0][0])
-    print "asset: " + get_asset_name(tcp_stream.addr[1][0])
+    asset_list += [get_asset_name(tcp_stream.addr[0][0]),
+                   get_asset_name(tcp_stream.addr[1][0])]
+    fact_list += ["quality:" + get_asset_name(tcp_stream.addr[0][0]) + \
+        ",status" + "=up",
+        "quality:" + get_asset_name(tcp_stream.addr[1][0]) + \
+        ",status" + "=up"]
 
 def idStream(tcp_stream, proto_name):
-    print "topology:" + get_asset_name(tcp_stream.addr[0][0]) + "->" + \
+    fact_list += ["topology:" + get_asset_name(tcp_stream.addr[0][0]) + "->" + \
         get_asset_name(tcp_stream.addr[1][0]) + "," + \
-        get_topology_name(proto_name) + ";"
+        get_topology_name(proto_name)]
 
 def endStream(tcp_stream):
     pass
