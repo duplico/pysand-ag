@@ -5,7 +5,6 @@ import ConfigParser
 import nids
 import getopt
 import datetime
-from ident_gen import *
 import time
 import traceback
 from pysand import sand
@@ -16,14 +15,15 @@ asset_mapdict = {}
 topology_mapdict = {}
 
 def main(interface,pcapfile,identdir, debug, results, nr, mapfile):
-    mapping_config = ConfigParser.ConfigParser()
-    mapping_config.read(mapfile)
-    if mapping_config.has_section('assets'):
-        for mapping in mapping_config.items('assets'):
-            asset_mapdict[mapping[1]] = mapping[0]
-    if mapping_config.has_section('topologies'):
-        for mapping in mapping_config.items('topologies'):
-            asset_mapdict[mapping[1]] = mapping[0]
+    if mapfile:
+        mapping_config = ConfigParser.ConfigParser()
+        mapping_config.read(mapfile)
+        if mapping_config.has_section('assets'):
+            for mapping in mapping_config.items('assets'):
+                asset_mapdict[mapping[1]] = mapping[0]
+        if mapping_config.has_section('topologies'):
+            for mapping in mapping_config.items('topologies'):
+                asset_mapdict[mapping[1]] = mapping[0]
     libsand = sand(newStream,idStream,endStream,identdir,pcapfile,interface,
                    debug_mode=debug, print_results=results, notroot=nr)
 
@@ -37,7 +37,7 @@ def get_topology_name(proto):
     if proto in topology_mapdict:
         return topology_mapdict[proto]
     else:
-        return 'connected_network_' + proto
+        return 'connected_network_' + proto.lower()
     # TODO: network vs. adjacent?
 
 def newStream(tcp_stream):
