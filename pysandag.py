@@ -18,6 +18,7 @@ asset_list = []
 fact_list = []
 
 def main(interface,pcapfile,identdir, debug, results, nr, mapfile):
+    global asset_list, fact_list
     if mapfile:
         mapping_config = ConfigParser.ConfigParser()
         mapping_config.read(mapfile)
@@ -53,6 +54,7 @@ def get_topology_name(proto):
     # TODO: network vs. adjacent?
 
 def newStream(tcp_stream):
+    global asset_list, fact_list
     asset_list += [get_asset_name(tcp_stream.addr[0][0]),
                    get_asset_name(tcp_stream.addr[1][0])]
     fact_list += ["quality:" + get_asset_name(tcp_stream.addr[0][0]) + \
@@ -61,6 +63,7 @@ def newStream(tcp_stream):
         ",status" + "=up"]
 
 def idStream(tcp_stream, proto_name):
+    global fact_list
     fact_list += ["topology:" + get_asset_name(tcp_stream.addr[0][0]) + "->" + \
         get_asset_name(tcp_stream.addr[1][0]) + "," + \
         get_topology_name(proto_name)]
